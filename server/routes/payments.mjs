@@ -7,11 +7,26 @@ import { requireAuth, requireRole } from '../middleware/require-auth.mjs';
 
 const router = Router();
 
-// Initialize Razorpay SDK using credentials from environment
-const razorpay = new Razorpay({
-  key_id: process.env.RAZORPAY_KEY_ID || 'rzp_test_TMoehPXBFAhtVP',
-  key_secret: process.env.RAZORPAY_KEY_SECRET || 'dbHk1ziwP4w3pubpfjVzrVMl',
-});
+let razorpayInstance = null;
+
+function getRazorpay() {
+  const keyId = process.env.RAZORPAY_KEY_ID || 'rzp_test_TMoehPXBFAhtVP';
+  const keySecret = process.env.RAZORPAY_KEY_SECRET || 'dbHk1ziwP4w3pubpfjVzrVMl';
+
+  if (!razorpayInstance) {
+    try {
+      razorpayInstance = new Razorpay({
+        key_id: keyId,
+        key_secret: keySecret,
+      });
+    } catch (err) {
+      console.warn('[Razorpay Warning] Razorpay initialization deferred:', err?.message || String(err));
+      return null;
+    }
+  }
+
+  return razorpayInstance;
+}
 
 // 1. Fetch/Initialize Wallet and transaction ledger
 router.get('/wallet', requireAuth, async (req, res) => {
@@ -73,6 +88,11 @@ router.post('/contracts/:id/create-order', requireAuth, requireRole('brand', 'ad
       currency: 'INR',
       receipt: `rcpt_${contractId.substring(4, 14)}`,
     };
+
+    const razorpay = getRazorpay();
+    if (!razorpay) {
+      throw new Error('Razorpay SDK is not configured');
+    }
 
     const order = await razorpay.orders.create(options);
 
@@ -321,6 +341,11 @@ router.post('/deposit/create-order', requireAuth, async (req, res) => {
       currency: 'INR',
       receipt: `dep_${createId('rcpt').substring(4, 14)}`,
     };
+
+    const razorpay = getRazorpay();
+    if (!razorpay) {
+      throw new Error('Razorpay SDK is not configured');
+    }
 
     const order = await razorpay.orders.create(options);
 
