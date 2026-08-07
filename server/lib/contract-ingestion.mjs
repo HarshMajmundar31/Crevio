@@ -1,8 +1,5 @@
 import { createHash } from 'node:crypto';
 import path from 'node:path';
-import * as pdfParseModule from 'pdf-parse';
-
-const pdfParse = pdfParseModule.default || pdfParseModule;
 
 function normalizeDate(raw) {
   if (!raw) {
@@ -96,8 +93,28 @@ export async function readUploadedDocument(file) {
   const isPdf = file.mimetype === 'application/pdf' || ext === '.pdf';
 
   if (isPdf) {
-    const parsed = await pdfParse(file.buffer);
-    return parsed.text || '';
+    if (typeof globalThis.DOMMatrix === 'undefined') {
+      globalThis.DOMMatrix = class DOMMatrix {};
+    }
+    if (typeof globalThis.ImageData === 'undefined') {
+      globalThis.ImageData = class ImageData {};
+    }
+    if (typeof globalThis.Path2D === 'undefined') {
+      globalThis.Path2D = class Path2D {};
+    }
+
+    try {
+      const pdfParseModule = await import('pdf-parse');
+      const pdfParse = pdfParseModule.default || pdfParseModule;
+      const parsed = await pdfParse(file.buffer);
+      return parsed.text || '';
+    } catch (err) {
+      console.error('[PDF Extraction Warning]', err);
+      // Fallback: extract ASCII string content if pdf-parse fails
+      const raw = file.buffer.toString('utf8');
+      const readableText = raw.replace(/[^\x20-\x7E\n\r\t]/g, ' ');
+      return readableText.trim() || raw;
+    }
   }
 
   return file.buffer.toString('utf8');

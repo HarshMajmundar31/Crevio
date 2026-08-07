@@ -1,6 +1,14 @@
 export const AUTH_TOKEN_KEY = 'crevio_auth_token';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || '';
+export function getApiBaseUrl(): string {
+  const url = import.meta.env.VITE_API_URL;
+  if (url && typeof window !== 'undefined' && window.location.hostname === 'localhost') {
+    return url;
+  }
+  return '';
+}
+
+const API_BASE_URL = getApiBaseUrl();
 
 type HttpMethod = 'GET' | 'POST' | 'PATCH' | 'DELETE';
 

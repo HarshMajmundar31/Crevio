@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Card } from '@/components/ui/card';
-import { AUTH_TOKEN_KEY } from '@/lib/api';
+import { AUTH_TOKEN_KEY, getApiBaseUrl } from '@/lib/api';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -54,7 +54,7 @@ export function CampaignAIAssistant({ onApplyData }: CampaignAIAssistantProps) {
         content: msg.content
       }));
 
-      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/api/campaigns/ai-assistant`, {
+      const res = await fetch(`${getApiBaseUrl()}/api/campaigns/ai-assistant`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

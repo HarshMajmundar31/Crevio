@@ -11,8 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Card } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { ArrowLeft, CheckCircle2, ChevronRight, Upload, Briefcase, FileText, Palette, DollarSign, Calendar, Target, Loader2 } from 'lucide-react';
-import { createCampaign } from '@/lib/api';
-import { AUTH_TOKEN_KEY } from '@/lib/api';
+import { createCampaign, AUTH_TOKEN_KEY, getApiBaseUrl } from '@/lib/api';
 import { useAuth as useClerkAuth } from '@clerk/clerk-react';
 import { CampaignAIAssistant } from '@/components/CampaignAIAssistant';
 
@@ -129,7 +128,7 @@ export default function CreateCampaign() {
       const formData = new FormData();
       formData.append('file', file);
       
-      const uploadRes = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/api/contracts/upload-for-campaign/${createdCampaignId}`, {
+      const uploadRes = await fetch(`${getApiBaseUrl()}/api/contracts/upload-for-campaign/${createdCampaignId}`, {
         method: 'POST',
         headers: {
           ...(token ? { 'Authorization': `Bearer ${token}` } : {})
@@ -140,7 +139,7 @@ export default function CreateCampaign() {
       const uploadData = await uploadRes.json();
       if (!uploadRes.ok) throw new Error(uploadData.error);
       
-      const parseRes = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/api/contracts/parse`, {
+      const parseRes = await fetch(`${getApiBaseUrl()}/api/contracts/parse`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
