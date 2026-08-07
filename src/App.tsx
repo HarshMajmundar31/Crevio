@@ -29,6 +29,7 @@ import WalletHub from "./pages/WalletHub";
 import AdminDashboard from "./pages/AdminDashboard";
 import NotFound from "./pages/NotFound";
 import CampaignDetail from "./pages/CampaignDetail";
+import AuditLogs from "./pages/AuditLogs";
 
 const queryClient = new QueryClient();
 
