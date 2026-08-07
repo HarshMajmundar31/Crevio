@@ -12,9 +12,9 @@ interface Step3Props {
 }
 
 export default function Step3_RateCard({ initialData, onNext, onBack }: Step3Props) {
-  const [reelRate, setReelRate] = useState(initialData.reelRate || 1500);
-  const [youtubeRate, setYoutubeRate] = useState(initialData.youtubeRate || 3500);
-  const [tiktokRate, setTiktokRate] = useState(initialData.tiktokRate || 1200);
+  const [reelRate, setReelRate] = useState(initialData.reelRate || 15000);
+  const [youtubeRate, setYoutubeRate] = useState(initialData.youtubeRate || 35000);
+  const [tiktokRate, setTiktokRate] = useState(initialData.tiktokRate || 12000);
   const [exclusivityDays, setExclusivityDays] = useState(initialData.exclusivityDays || 30);
   const [usageRights, setUsageRights] = useState(initialData.usageRights || '1 Year Digital & Social Media Usage Rights Included');
 
@@ -59,7 +59,7 @@ export default function Step3_RateCard({ initialData, onNext, onBack }: Step3Pro
               Instagram Reel (60s)
             </label>
             <div className="relative">
-              <span className="absolute left-3 top-2.5 text-xs text-muted-foreground">$</span>
+              <span className="absolute left-3 top-2.5 text-xs text-muted-foreground">₹</span>
               <Input
                 type="number"
                 value={reelRate}
@@ -78,7 +78,7 @@ export default function Step3_RateCard({ initialData, onNext, onBack }: Step3Pro
               YouTube Video Review
             </label>
             <div className="relative">
-              <span className="absolute left-3 top-2.5 text-xs text-muted-foreground">$</span>
+              <span className="absolute left-3 top-2.5 text-xs text-muted-foreground">₹</span>
               <Input
                 type="number"
                 value={youtubeRate}
@@ -97,7 +97,7 @@ export default function Step3_RateCard({ initialData, onNext, onBack }: Step3Pro
               TikTok Short Post
             </label>
             <div className="relative">
-              <span className="absolute left-3 top-2.5 text-xs text-muted-foreground">$</span>
+              <span className="absolute left-3 top-2.5 text-xs text-muted-foreground">₹</span>
               <Input
                 type="number"
                 value={tiktokRate}

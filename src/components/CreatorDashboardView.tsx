@@ -26,9 +26,9 @@ import {
 
 function formatCurrency(amount: number | string) {
   const num = typeof amount === 'string' ? parseFloat(amount) || 0 : amount;
-  return new Intl.NumberFormat('en-US', {
+  return new Intl.NumberFormat('en-IN', {
     style: 'currency',
-    currency: 'USD',
+    currency: 'INR',
     maximumFractionDigits: 0,
   }).format(num);
 }
@@ -57,7 +57,7 @@ export default function CreatorDashboardView({ displayName }: CreatorDashboardVi
   const activeFollowersCount = profileDraft?.verifiedMeta?.followersCount
     ? profileDraft.verifiedMeta.followersCount.toLocaleString()
     : '1,574';
-  const activeReelRate = profileDraft?.reelRate ? `$${profileDraft.reelRate}` : '$300';
+  const activeReelRate = profileDraft?.reelRate ? `₹${profileDraft.reelRate}` : '₹25,000';
 
   const [contracts, setContracts] = useState<ApiContract[]>([]);
   const [applications, setApplications] = useState<ApiCampaignApplication[]>([]);

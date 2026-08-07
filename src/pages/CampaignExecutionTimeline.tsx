@@ -185,11 +185,11 @@ export default function CampaignExecutionTimeline() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 p-4 rounded-xl bg-card border border-border">
           <div>
             <span className="text-[10px] text-muted-foreground uppercase font-mono block">Campaign Budget</span>
-            <span className="text-sm font-bold text-foreground font-mono">${campaignData.budget.toLocaleString()} USD</span>
+            <span className="text-sm font-bold text-foreground font-mono">₹{campaignData.budget.toLocaleString()} INR</span>
           </div>
           <div>
             <span className="text-[10px] text-muted-foreground uppercase font-mono block">Escrow Locked</span>
-            <span className="text-sm font-bold text-primary font-mono">${campaignData.lockedEscrow.toLocaleString()} USD</span>
+            <span className="text-sm font-bold text-primary font-mono">₹{campaignData.lockedEscrow.toLocaleString()} INR</span>
           </div>
           <div>
             <span className="text-[10px] text-muted-foreground uppercase font-mono block">Overall Execution</span>
@@ -274,7 +274,7 @@ export default function CampaignExecutionTimeline() {
                   </div>
 
                   <div className="flex items-center gap-3">
-                    <span className="font-mono font-bold text-foreground text-sm">${c.value.toLocaleString()} USD</span>
+                    <span className="font-mono font-bold text-foreground text-sm">₹{c.value.toLocaleString()} INR</span>
                     <Badge variant="outline" className="text-[10px] font-mono text-amber-500 border-amber-500/30">
                       SLA: {c.slaRemaining}
                     </Badge>

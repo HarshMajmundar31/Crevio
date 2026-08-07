@@ -5,7 +5,7 @@ import DashboardLayout from '@/components/DashboardLayout';
 import ContractStatusBadge from '@/components/ContractStatusBadge';
 import { deleteCampaign, getCampaigns, type ApiCampaign } from '@/lib/api';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Calendar, DollarSign, Tag, ArrowUpRight, Users, Search, Filter, Trash2 } from 'lucide-react';
+import { Calendar, IndianRupee, Tag, ArrowUpRight, Users, Search, Filter, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useEffect, useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
@@ -195,8 +195,8 @@ export default function Campaigns() {
               </div>
               <div className="absolute top-3 right-3">
                 <div className="bg-background/80 backdrop-blur-md px-2 py-1 rounded-md border border-white/10 text-xs font-semibold flex items-center gap-1 shadow-sm text-foreground">
-                  <DollarSign className="w-3 h-3 text-emerald-500" />
-                  ${Number(campaign.budget).toLocaleString()} Prize Pool
+                  <IndianRupee className="w-3 h-3 text-emerald-500" />
+                  ₹{Number(campaign.budget).toLocaleString()} Prize Pool
                 </div>
               </div>
               

@@ -42,7 +42,7 @@ export default function AuditLogs() {
       actorRole: 'BRAND',
       sha256Hash: 'a8f9e0d1c2b3a4f5e6d7c8b9a0f1e2d3c4b5a6f7e8d9c0b1a2f3e4d5c6b7a8f9',
       parentHash: '7e8d9c0b1a2f3e4d5c6b7a8f9a8f9e0d1c2b3a4f5e6d7c8b9a0f1e2d3c4b5a6f',
-      payloadSummary: 'Funded $15,000 USD to Crevio Multi-Sig Escrow Vault. Lock flag toggled to IMMUTABLE.',
+      payloadSummary: 'Funded ₹15,00,000 INR to Crevio Multi-Sig Escrow Vault. Lock flag toggled to IMMUTABLE.',
       verificationStatus: 'VERIFIED'
     },
     {

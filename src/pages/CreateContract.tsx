@@ -10,7 +10,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { ArrowLeft, Calendar, DollarSign, FileText, User, Upload } from 'lucide-react';
+import { ArrowLeft, Calendar, IndianRupee, FileText, User, Upload } from 'lucide-react';
 import { getApplications, ingestContract, type ApiCampaignApplication } from '@/lib/api';
 
 export default function CreateContract() {
@@ -186,9 +186,9 @@ export default function CreateContract() {
 
               <div className="grid md:grid-cols-2 gap-6">
                 <div className="space-y-2">
-                  <Label>Payment Amount ($) *</Label>
+                  <Label>Payment Amount (₹) *</Label>
                   <div className="relative">
-                    <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                     <Input
                       type="number"
                       min="0"

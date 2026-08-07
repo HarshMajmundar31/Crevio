@@ -36,9 +36,9 @@ import { Progress } from '@/components/ui/progress';
 import { Input } from '@/components/ui/input';
 
 function formatCurrency(amount: number) {
-  return new Intl.NumberFormat('en-US', {
+  return new Intl.NumberFormat('en-IN', {
     style: 'currency',
-    currency: 'USD',
+    currency: 'INR',
     maximumFractionDigits: 0,
   }).format(amount);
 }
@@ -157,7 +157,7 @@ export default function Dashboard() {
     if (!fundEscrowModal) return;
     toast({
       title: 'Escrow Vault Funded & Locked',
-      description: `Successfully locked $${fundEscrowModal.amount.toLocaleString()} USD in Crevio Multi-Sig Escrow Vault for ${fundEscrowModal.contractNum}. Terms are IMMUTABLE.`,
+      description: `Successfully locked ${formatCurrency(fundEscrowModal.amount)} in Crevio Multi-Sig Escrow Vault for ${fundEscrowModal.contractNum}. Terms are IMMUTABLE.`,
     });
     setRiskAlerts(prev => prev.filter(a => a.contractNumber !== fundEscrowModal.contractNum));
     setFundEscrowModal(null);
@@ -550,7 +550,7 @@ export default function Dashboard() {
 
                 <div className="p-3 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-between font-mono">
                   <span className="text-muted-foreground">Required Escrow Amount:</span>
-                  <span className="text-base font-bold text-primary">${fundEscrowModal.amount.toLocaleString()} USD</span>
+                  <span className="text-base font-bold text-primary">{formatCurrency(fundEscrowModal.amount)}</span>
                 </div>
               </div>
 

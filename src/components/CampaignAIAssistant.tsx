@@ -162,7 +162,7 @@ export function CampaignAIAssistant({ onApplyData }: CampaignAIAssistantProps) {
           <Input 
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder="E.g. Create a $5k TikTok campaign for gamers..."
+            placeholder="E.g. Create a ₹50k Instagram Reel campaign for gamers..."
             className="flex-1 bg-background"
             disabled={isLoading}
           />

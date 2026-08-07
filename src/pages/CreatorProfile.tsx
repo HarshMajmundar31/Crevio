@@ -7,7 +7,7 @@ import { useUser } from '@clerk/clerk-react';
 import { useToast } from '@/hooks/use-toast';
 import {
   User, ShieldCheck, Instagram, Youtube, Video, Globe,
-  Tag, Target, DollarSign, ExternalLink, Plus, RefreshCw,
+  Tag, Target, IndianRupee, ExternalLink, Plus, RefreshCw,
   Edit3, CheckCircle2, Lock, Sparkles, Trash2, Save,
   Layers, Link as LinkIcon, Twitter, Tv, Check, Star
 } from 'lucide-react';
@@ -442,7 +442,7 @@ export default function CreatorProfile() {
           <div className="flex items-center justify-between border-b border-border/50 pb-3">
             <div>
               <h3 className="text-base font-bold text-foreground flex items-center gap-2">
-                <DollarSign className="w-5 h-5 text-emerald-500" />
+                <IndianRupee className="w-5 h-5 text-emerald-500" />
                 Baseline Rate Card & Licensing Terms
               </h3>
               <p className="text-xs text-muted-foreground">
@@ -454,7 +454,7 @@ export default function CreatorProfile() {
                 variant="outline"
                 size="sm"
                 onClick={() => setIsEditingRateCard(true)}
-                className="text-xs gap-1.5"
+                className="text-xs gap-1.5 shrink-0"
               >
                 <Edit3 className="w-3.5 h-3.5" />
                 Edit Rates
@@ -478,10 +478,10 @@ export default function CreatorProfile() {
                 Instagram Reel Fee
               </span>
               {!isEditingRateCard ? (
-                <p className="text-2xl font-extrabold text-foreground">${profileData.reelRate || 300}</p>
+                <p className="text-2xl font-extrabold text-foreground">₹{profileData.reelRate || '25,000'}</p>
               ) : (
                 <div className="relative">
-                  <span className="absolute left-2.5 top-2 text-xs text-muted-foreground">$</span>
+                  <span className="absolute left-2.5 top-2 text-xs text-muted-foreground">₹</span>
                   <Input
                     type="number"
                     value={reelRate}
@@ -499,10 +499,10 @@ export default function CreatorProfile() {
                 YouTube Review Fee
               </span>
               {!isEditingRateCard ? (
-                <p className="text-2xl font-extrabold text-foreground">${profileData.youtubeRate || 900}</p>
+                <p className="text-2xl font-extrabold text-foreground">₹{profileData.youtubeRate || '75,000'}</p>
               ) : (
                 <div className="relative">
-                  <span className="absolute left-2.5 top-2 text-xs text-muted-foreground">$</span>
+                  <span className="absolute left-2.5 top-2 text-xs text-muted-foreground">₹</span>
                   <Input
                     type="number"
                     value={youtubeRate}
@@ -520,10 +520,10 @@ export default function CreatorProfile() {
                 TikTok Short Fee
               </span>
               {!isEditingRateCard ? (
-                <p className="text-2xl font-extrabold text-foreground">${profileData.tiktokRate || 208}</p>
+                <p className="text-2xl font-extrabold text-foreground">₹{profileData.tiktokRate || '15,000'}</p>
               ) : (
                 <div className="relative">
-                  <span className="absolute left-2.5 top-2 text-xs text-muted-foreground">$</span>
+                  <span className="absolute left-2.5 top-2 text-xs text-muted-foreground">₹</span>
                   <Input
                     type="number"
                     value={tiktokRate}

@@ -28,12 +28,12 @@ export default function ContractParsingStudio() {
   const [parsedData, setParsedData] = useState({
     brandName: 'Acme Cosmetics Inc.',
     campaignName: 'Summer Glow Launch 2026',
-    totalValue: '12500',
-    currency: 'USD',
+    totalValue: '125000',
+    currency: 'INR',
     confidenceScore: 96.8,
     deliverables: [
-      { id: '1', platform: 'YouTube', format: 'Dedicated Video (>8 mins)', dueDate: '2026-08-15', amount: '10000', confidence: 98 },
-      { id: '2', platform: 'Instagram', format: '1x Story + Reel', dueDate: '2026-08-20', amount: '2500', confidence: 95 }
+      { id: '1', platform: 'YouTube', format: 'Dedicated Video (>8 mins)', dueDate: '2026-08-15', amount: '100000', confidence: 98 },
+      { id: '2', platform: 'Instagram', format: '1x Story + Reel', dueDate: '2026-08-20', amount: '25000', confidence: 95 }
     ],
     clauses: {
       usageRights: '90 Days Digital Ad Rights',
@@ -192,13 +192,13 @@ export default function ContractParsingStudio() {
                   campaign <strong>{parsedData.campaignName}</strong>.
                 </p>
                 <div className="p-2 bg-primary/10 border border-primary/20 rounded text-[11px] font-sans">
-                  <strong>Extracted Parameter #1:</strong> Deliverable 1 - YouTube Dedicated Review Video (min 8 mins). Compensation: ${parsedData.deliverables[0].amount} USD.
+                  <strong>Extracted Parameter #1:</strong> Deliverable 1 - YouTube Dedicated Review Video (min 8 mins). Compensation: ₹{Number(parsedData.deliverables[0].amount).toLocaleString()} INR.
                 </div>
                 <p>
                   Deliverable Due Date: <strong>{parsedData.deliverables[0].dueDate}</strong>. Creator agrees to submit proof of publication link.
                 </p>
                 <div className="p-2 bg-primary/10 border border-primary/20 rounded text-[11px] font-sans">
-                  <strong>Extracted Parameter #2:</strong> Deliverable 2 - Instagram 1x Story + Reel. Compensation: ${parsedData.deliverables[1].amount} USD.
+                  <strong>Extracted Parameter #2:</strong> Deliverable 2 - Instagram 1x Story + Reel. Compensation: ₹{Number(parsedData.deliverables[1].amount).toLocaleString()} INR.
                 </div>
                 <p>
                   Usage Rights: {parsedData.clauses.usageRights}.
@@ -243,7 +243,7 @@ export default function ContractParsingStudio() {
                       </div>
                       <div className="p-2.5 rounded bg-muted/30 border border-border/50">
                         <span className="text-[10px] text-muted-foreground block">Total Escrow Value</span>
-                        <span className="font-semibold text-primary font-mono">${Number(parsedData.totalValue).toLocaleString()} USD</span>
+                        <span className="font-semibold text-primary font-mono">₹{Number(parsedData.totalValue).toLocaleString()} INR</span>
                       </div>
                     </div>
 
@@ -258,7 +258,7 @@ export default function ContractParsingStudio() {
                               <p className="text-[10px] text-muted-foreground font-mono">Due Date: {del.dueDate}</p>
                             </div>
                             <div className="text-right font-mono">
-                              <span className="font-semibold text-foreground">${del.amount} USD</span>
+                              <span className="font-semibold text-foreground">₹{Number(del.amount).toLocaleString()} INR</span>
                               <span className="text-[9px] text-emerald-500 block">Match Score: {del.confidence}%</span>
                             </div>
                           </div>
@@ -342,7 +342,7 @@ export default function ContractParsingStudio() {
                     {creatorMode === 'AI_MATCH' && (
                       <div className="space-y-2.5 p-3 rounded-lg bg-muted/30 border border-border/50">
                         <div className="flex items-center justify-between">
-                          <span className="text-xs font-semibold text-foreground">Matched Creators for $12,500 YouTube Campaign</span>
+                          <span className="text-xs font-semibold text-foreground">Matched Creators for ₹1,25,000 YouTube Campaign</span>
                           <Badge variant="outline" className="text-[9px] bg-amber-500/10 text-amber-500 border-amber-500/30">
                             CREVIO SUITABILITY ENGINE
                           </Badge>

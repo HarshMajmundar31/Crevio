@@ -10,7 +10,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { ArrowLeft, CheckCircle2, ChevronRight, Upload, Briefcase, FileText, Palette, DollarSign, Calendar, Target, Loader2 } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, ChevronRight, Upload, Briefcase, FileText, Palette, IndianRupee, Calendar, Target, Loader2 } from 'lucide-react';
 import { createCampaign, AUTH_TOKEN_KEY, getApiBaseUrl } from '@/lib/api';
 import { useAuth as useClerkAuth } from '@clerk/clerk-react';
 import { CampaignAIAssistant } from '@/components/CampaignAIAssistant';
@@ -411,7 +411,7 @@ export default function CreateCampaign() {
                       <div className="grid sm:grid-cols-2 gap-4">
                         <Card className="p-4 bg-muted/30">
                           <Label className="text-xs text-muted-foreground">Extracted Value</Label>
-                          <p className="text-2xl font-bold flex items-center"><DollarSign className="w-5 h-5 text-emerald-500"/> {parsedTerms.totalValue}</p>
+                          <p className="text-2xl font-bold flex items-center"><IndianRupee className="w-5 h-5 text-emerald-500"/> {parsedTerms.totalValue}</p>
                         </Card>
                         <Card className="p-4 bg-muted/30">
                           <Label className="text-xs text-muted-foreground">Deliverables Found</Label>
