@@ -745,7 +745,7 @@ router.get('/:id/execution-matrix', async (req, res, next) => {
         stageId: 'STAGE_1_DRAFT',
         stageNumber: 1,
         title: 'Contract Ingestion & AI Parse',
-        description: 'Original PDF uploaded and parameters parsed into ACEE rule schema',
+        description: 'Original PDF uploaded and parameters parsed into Crevio rule schema',
         contracts: contracts.filter(c => c.status === 'draft')
       },
       {
@@ -773,7 +773,7 @@ router.get('/:id/execution-matrix', async (req, res, next) => {
         stageId: 'STAGE_5_EXECUTING_EVIDENCE',
         stageNumber: 5,
         title: 'Executing & Evidence Review',
-        description: 'Creator submitted live deliverable URL/asset; ACEE automated compliance pass',
+        description: 'Creator submitted live deliverable URL/asset; Crevio automated compliance pass',
         contracts: contracts.filter(c => c.status === 'executed')
       },
       {

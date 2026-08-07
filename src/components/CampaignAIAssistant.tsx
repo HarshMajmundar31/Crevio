@@ -19,7 +19,7 @@ interface CampaignAIAssistantProps {
 export function CampaignAIAssistant({ onApplyData }: CampaignAIAssistantProps) {
   const { getToken } = useClerkAuth();
   const [messages, setMessages] = useState<Message[]>([
-    { role: 'assistant', content: "Hi! I'm your ACEE Campaign Assistant. Tell me what kind of campaign you want to run, and I'll help you fill out the details!" }
+    { role: 'assistant', content: "Hi! I'm your Crevio Campaign Assistant. Tell me what kind of campaign you want to run, and I'll help you fill out the details!" }
   ]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -94,7 +94,7 @@ export function CampaignAIAssistant({ onApplyData }: CampaignAIAssistantProps) {
           <Bot className="w-5 h-5 text-primary" />
         </div>
         <div>
-          <h3 className="font-semibold text-sm">ACEE Campaign AI</h3>
+          <h3 className="font-semibold text-sm">Crevio Campaign AI</h3>
           <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-mono">GPT-4o Agent</p>
         </div>
       </div>

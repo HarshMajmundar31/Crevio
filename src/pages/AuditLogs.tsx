@@ -19,7 +19,7 @@ interface AuditLogEntry {
   contractNumber: string;
   eventType: string;
   actor: string;
-  actorRole: 'BRAND' | 'CREATOR' | 'ACEE_ENGINE' | 'TREASURY';
+  actorRole: 'BRAND' | 'CREATOR' | 'CREVIO_ENGINE' | 'TREASURY';
   sha256Hash: string;
   parentHash: string;
   payloadSummary: string;
@@ -36,19 +36,19 @@ export default function AuditLogs() {
     {
       id: 'AUD-9910',
       timestamp: '2026-07-27 14:28:10 UTC',
-      contractNumber: '#ACEE-9921',
+      contractNumber: '#CR-9921',
       eventType: 'ESCROW_FUNDED_AND_LOCKED',
       actor: 'Brand Org Vault',
       actorRole: 'BRAND',
       sha256Hash: 'a8f9e0d1c2b3a4f5e6d7c8b9a0f1e2d3c4b5a6f7e8d9c0b1a2f3e4d5c6b7a8f9',
       parentHash: '7e8d9c0b1a2f3e4d5c6b7a8f9a8f9e0d1c2b3a4f5e6d7c8b9a0f1e2d3c4b5a6f',
-      payloadSummary: 'Funded $15,000 USD to ACEE Multi-Sig Escrow Vault. Lock flag toggled to IMMUTABLE.',
+      payloadSummary: 'Funded $15,000 USD to Crevio Multi-Sig Escrow Vault. Lock flag toggled to IMMUTABLE.',
       verificationStatus: 'VERIFIED'
     },
     {
       id: 'AUD-9909',
       timestamp: '2026-07-27 12:15:44 UTC',
-      contractNumber: '#ACEE-9921',
+      contractNumber: '#CR-9921',
       eventType: 'SIGNED_CONTRACT_PDF_REUPLOADED',
       actor: 'Sarah Beauty (@beauty_sarah)',
       actorRole: 'CREATOR',
@@ -60,10 +60,10 @@ export default function AuditLogs() {
     {
       id: 'AUD-9908',
       timestamp: '2026-07-27 09:30:12 UTC',
-      contractNumber: '#ACEE-9910',
+      contractNumber: '#CR-9910',
       eventType: 'EVIDENCE_URL_VERIFIED',
-      actor: 'ACEE Compliance Crawler v2.4',
-      actorRole: 'ACEE_ENGINE',
+      actor: 'Crevio Compliance Crawler v2.4',
+      actorRole: 'CREVIO_ENGINE',
       sha256Hash: '3c4b5a6f7e8d9c0b1a2f3e4d5c6b7a8f9a8f9e0d1c2b3a4f5e6d7c8b9a0f1e2d',
       parentHash: '1a2f3e4d5c6b7a8f9a8f9e0d1c2b3a4f5e6d7c8b9a0f1e2d3c4b5a6f7e8d9c0b',
       payloadSummary: 'Scraped YouTube Video ID acme_glow_review. Verified brand mention & disclosure tag.',
@@ -72,10 +72,10 @@ export default function AuditLogs() {
     {
       id: 'AUD-9907',
       timestamp: '2026-07-26 18:02:00 UTC',
-      contractNumber: '#ACEE-9880',
+      contractNumber: '#CR-9880',
       eventType: 'CONTRACT_PARSED_BY_AI',
-      actor: 'ACEE Ingestion Engine',
-      actorRole: 'ACEE_ENGINE',
+      actor: 'Crevio Ingestion Engine',
+      actorRole: 'CREVIO_ENGINE',
       sha256Hash: '1a2f3e4d5c6b7a8f9a8f9e0d1c2b3a4f5e6d7c8b9a0f1e2d3c4b5a6f7e8d9c0b',
       parentHash: '0000000000000000000000000000000000000000000000000000000000000000',
       payloadSummary: 'Parsed 3 deliverables and 2 usage rights clauses with 98.4% confidence score.',
@@ -87,7 +87,7 @@ export default function AuditLogs() {
     const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(mockAuditLogs, null, 2));
     const downloadAnchor = document.createElement('a');
     downloadAnchor.setAttribute("href", dataStr);
-    downloadAnchor.setAttribute("download", `acee_audit_trail_${Date.now()}.json`);
+    downloadAnchor.setAttribute("download", `crevio_audit_trail_${Date.now()}.json`);
     document.body.appendChild(downloadAnchor);
     downloadAnchor.click();
     downloadAnchor.remove();

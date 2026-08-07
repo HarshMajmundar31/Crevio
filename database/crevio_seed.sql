@@ -1,4 +1,4 @@
--- Minimal ACEMS seed data mapped from current mock data.
+-- Minimal Crevio seed data mapped from current mock data.
 
 INSERT INTO users (id, full_name, email, role)
 VALUES
@@ -6,7 +6,7 @@ VALUES
   ('b2', 'Spotify Ads', 'ads@spotify.com', 'brand'),
   ('c1', 'Priya Sharma', 'priya@creator.com', 'creator'),
   ('c2', 'Alex Johnson', 'alex@creator.com', 'creator'),
-  ('a1', 'System Admin', 'admin@acems.com', 'admin')
+  ('a1', 'System Admin', 'admin@crevio.io', 'admin')
 ON CONFLICT (id) DO NOTHING;
 
 INSERT INTO campaigns (id, brand_id, title, description, platform, budget, deadline, status)

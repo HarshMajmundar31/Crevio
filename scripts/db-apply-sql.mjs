@@ -13,7 +13,7 @@ async function main() {
   }
 
   if (!sqlPath) {
-    console.error('Missing SQL file path. Usage: node --env-file=.env scripts/db-apply-sql.mjs database/acems_schema.sql');
+    console.error('Missing SQL file path. Usage: node --env-file=.env scripts/db-apply-sql.mjs database/crevio_schema.sql');
     process.exit(1);
   }
 

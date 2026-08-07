@@ -1,4 +1,4 @@
--- ACEMS relational schema based on project report workflows:
+-- Crevio relational schema based on project report workflows:
 -- authentication, campaign management, contract lifecycle,
 -- rule evaluation, decisions, notifications, and audit trail.
 

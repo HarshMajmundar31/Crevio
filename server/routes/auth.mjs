@@ -42,7 +42,7 @@ async function resolveAuthContextProfile(authContext) {
       clerkUser.username ||
       (primaryEmail ? primaryEmail.split('@')[0] : null) ||
       name ||
-      'ACEMS User';
+      'Crevio User';
 
     email = email || primaryEmail;
     name = name || resolvedName;
@@ -51,10 +51,10 @@ async function resolveAuthContextProfile(authContext) {
   }
 
   if (!email) {
-    email = `clerk-${userId}@acems.local`;
+    email = `clerk-${userId}@crevio.local`;
   }
 
-  return { userId, email, name: name || 'ACEMS User' };
+  return { userId, email, name: name || 'Crevio User' };
 }
 
 router.get('/me', requireClerkAuth, async (req, res) => {
@@ -91,8 +91,8 @@ router.get('/me', requireClerkAuth, async (req, res) => {
     if (user) {
       const shouldUpdateName =
         name &&
-        name !== 'ACEMS User' &&
-        (!user.full_name || user.full_name === 'ACEMS User' || user.full_name !== name);
+        name !== 'Crevio User' &&
+        (!user.full_name || user.full_name === 'Crevio User' || user.full_name !== name);
 
       const shouldUpdateEmail = email && user.email !== email;
 
@@ -251,7 +251,7 @@ router.post('/onboard', requireClerkAuth, async (req, res) => {
       insertedUser = inserted.rows[0];
     } catch (insertErr) {
       if (insertErr?.code === '23505') {
-        const altEmail = `clerk-${userId}@acems.local`;
+        const altEmail = `clerk-${userId}@crevio.local`;
         const insertedAlt = await query(
           `INSERT INTO users (id, full_name, email, role, onboarding_step, is_active)
            VALUES ($1, $2, $3, $4, 1, TRUE)

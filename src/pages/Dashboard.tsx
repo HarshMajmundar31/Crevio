@@ -111,7 +111,7 @@ export default function Dashboard() {
       console.log('[Dashboard Realtime WebSocket Event Received]', event);
       toast({
         title: '⚡ Real-time Contract Telemetry Event',
-        description: `ACEE Engine update received: ${event.type}`,
+        description: `Crevio Engine update received: ${event.type}`,
       });
       void loadData();
     });
@@ -123,7 +123,7 @@ export default function Dashboard() {
 
   // REAL ACTION HANDLERS
   const handleActionClick = (action: string, alertId: string, contractNum: string) => {
-    const contract = contracts.find(c => c.id === contractNum || `#ACEE-${c.id.substring(0,6)}` === contractNum);
+    const contract = contracts.find(c => c.id === contractNum || `#CR-${c.id.substring(0,6)}` === contractNum);
 
     if (action === 'INSPECT_PROOF' || action === 'VIEW_PDF') {
       setInspectProofModal({ open: true, contractNum, contract });
@@ -148,7 +148,7 @@ export default function Dashboard() {
     } else {
       toast({
         title: `Triggered ${action}`,
-        description: `Action initiated for ${contractNum}. ACEE execution Engine updated.`,
+        description: `Action initiated for ${contractNum}. Crevio execution Engine updated.`,
       });
     }
   };
@@ -157,7 +157,7 @@ export default function Dashboard() {
     if (!fundEscrowModal) return;
     toast({
       title: 'Escrow Vault Funded & Locked',
-      description: `Successfully locked $${fundEscrowModal.amount.toLocaleString()} USD in ACEE Multi-Sig Escrow Vault for ${fundEscrowModal.contractNum}. Terms are IMMUTABLE.`,
+      description: `Successfully locked $${fundEscrowModal.amount.toLocaleString()} USD in Crevio Multi-Sig Escrow Vault for ${fundEscrowModal.contractNum}. Terms are IMMUTABLE.`,
     });
     setRiskAlerts(prev => prev.filter(a => a.contractNumber !== fundEscrowModal.contractNum));
     setFundEscrowModal(null);
@@ -186,7 +186,7 @@ export default function Dashboard() {
           <div>
             <div className="flex items-center gap-2 mb-1">
               <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20 text-[10px] uppercase font-mono tracking-wider">
-                ACEE Command Center v2.5
+                Crevio Command Center v2.5
               </Badge>
               <span className="text-xs text-muted-foreground">• Live Execution Authority</span>
             </div>
@@ -419,7 +419,7 @@ export default function Dashboard() {
         <div className="rounded-xl border border-border bg-card p-5 space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border/50 pb-3">
             <div>
-              <h3 className="text-sm font-semibold text-foreground">Active Contracts Monitored by ACEE</h3>
+              <h3 className="text-sm font-semibold text-foreground">Active Contracts Monitored by Crevio</h3>
               <p className="text-xs text-muted-foreground">Click any contract to view parsed clauses, cryptographic hashes, or stage logs.</p>
             </div>
             <Link to="/contracts" className="text-xs text-primary hover:underline font-medium">
@@ -497,7 +497,7 @@ export default function Dashboard() {
                       COMPLIANCE VERIFIED
                     </Badge>
                   </div>
-                  <p className="text-[11px] text-muted-foreground">ACEE Compliance Crawler contract telemetry status.</p>
+                  <p className="text-[11px] text-muted-foreground">Crevio Compliance Crawler contract telemetry status.</p>
                 </div>
 
                 <div className="space-y-1.5 font-mono text-[11px]">
@@ -544,7 +544,7 @@ export default function Dashboard() {
 
               <div className="space-y-3 text-xs">
                 <p className="text-muted-foreground">
-                  Deposit escrow capital into ACEE Multi-Sig Vault for contract <strong className="text-foreground">{fundEscrowModal.contractNum}</strong>.
+                  Deposit escrow capital into Crevio Multi-Sig Vault for contract <strong className="text-foreground">{fundEscrowModal.contractNum}</strong>.
                   Once deposited, contract terms become <strong className="text-foreground font-mono">100% IMMUTABLE</strong>.
                 </p>
 

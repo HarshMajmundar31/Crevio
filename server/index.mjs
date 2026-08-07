@@ -9,5 +9,5 @@ const port = Number(process.env.API_PORT || 3000);
 initSocketServer(httpServer);
 
 httpServer.listen(port, () => {
-  console.log(`ACEMS Real-Time API & Socket.IO running on http://localhost:${port}`);
+  console.log(`Crevio Real-Time API & Socket.IO running on http://localhost:${port}`);
 });

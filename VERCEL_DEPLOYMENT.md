@@ -1,4 +1,4 @@
-# ACEMS Vercel Deployment Guide
+# Crevio Vercel Deployment Guide
 
 This repository is pre-configured for full-stack deployment on **Vercel** with:
 - **Frontend**: Vite + React SPA (Static assets in `dist/`)
@@ -13,7 +13,7 @@ This repository is pre-configured for full-stack deployment on **Vercel** with:
 
 1. Push your latest code to your GitHub / GitLab repository.
 2. Go to [Vercel Dashboard](https://vercel.com/dashboard) and click **"Add New..."** -> **"Project"**.
-3. Import your `ACEMS` repository.
+3. Import your `Crevio` repository.
 4. Keep the default build settings:
    - **Framework Preset**: Vite
    - **Build Command**: `npm run build`
@@ -49,7 +49,7 @@ Set these in your **Vercel Project Settings -> Environment Variables**:
 | `CLERK_SECRET_KEY` | Yes | `sk_test_...` or `sk_live_...` | Clerk Backend Secret Key |
 | `VITE_CLERK_PUBLISHABLE_KEY` | Yes | `pk_test_...` or `pk_live_...` | Clerk Frontend Publishable Key |
 | `CLERK_PUBLISHABLE_KEY` | Yes | `pk_test_...` or `pk_live_...` | Clerk Publishable Key (server fallback) |
-| `VITE_APP_NAME` | Optional | `ACEMS` | App display name |
+| `VITE_APP_NAME` | Optional | `Crevio` | App display name |
 | `VITE_ENABLE_MOCK_DATA` | Optional | `false` | Set to `false` for live DB data |
 | `VITE_CLOUDINARY_CLOUD_NAME` | Optional | `vobf6iec` | Cloudinary Cloud Name for uploads |
 | `VITE_CLOUDINARY_API_KEY` | Optional | `784877527...` | Cloudinary API Key |

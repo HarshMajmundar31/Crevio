@@ -17,7 +17,7 @@ router.get('/', async (_req, res) => {
   }
 
   res.json({
-    service: 'acems-api',
+    service: 'crevio-api',
     status: 'ok',
     database: dbStatus,
     dbError,

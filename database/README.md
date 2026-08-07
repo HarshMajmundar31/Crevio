@@ -1,6 +1,6 @@
-# ACEMS Database Guide
+# Crevio Database Guide
 
-This folder contains the Neon/PostgreSQL database setup for ACEMS based on the project report workflows:
+This folder contains the Neon/PostgreSQL database setup for Crevio based on the project report workflows:
 
 - Authentication (login/session support)
 - Campaign creation and requirements
@@ -10,8 +10,8 @@ This folder contains the Neon/PostgreSQL database setup for ACEMS based on the p
 
 ## Files
 
-- `acems_schema.sql`: Full relational schema and indexes
-- `acems_seed.sql`: Starter data mapped from current ACEMS mock data
+- `crevio_schema.sql`: Full relational schema and indexes
+- `crevio_seed.sql`: Starter data mapped from current Crevio mock data
 
 ## Run Commands
 

@@ -877,7 +877,7 @@ router.post('/upload-for-campaign/:campaignId', requireAuth, requireRole('brand'
   }
 
   // Simulate storing to Cloudinary and generating a URL
-  const fileUrl = `https://res.cloudinary.com/acems/contracts/${campaignId}_${Date.now()}.pdf`;
+  const fileUrl = `https://res.cloudinary.com/crevio/contracts/${campaignId}_${Date.now()}.pdf`;
   
   const text = await readUploadedDocument(req.file);
   const checksum = createContentHash(text);

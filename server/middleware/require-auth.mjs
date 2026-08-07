@@ -25,7 +25,7 @@ function normalizeProfile(userId, sessionClaims = {}) {
     null;
 
   const email = typeof emailCandidate === 'string' ? emailCandidate : null;
-  const name = (typeof nameCandidate === 'string' && nameCandidate.trim()) || (email ? email.split('@')[0] : 'ACEMS User');
+  const name = (typeof nameCandidate === 'string' && nameCandidate.trim()) || (email ? email.split('@')[0] : 'Crevio User');
 
   return { userId, email, name };
 }

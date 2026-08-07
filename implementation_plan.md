@@ -1,6 +1,6 @@
 # Campaign Escrow & Deposit Payment System Plan
 
-This document outlines the end-to-end plan to integrate an Escrow (Deposit) Payment System into **Crevio (ACEMS)**. 
+This document outlines the end-to-end plan to integrate an Escrow (Deposit) Payment System into **Crevio**. 
 
 An escrow system acts as a trusted third-party holding chamber that secures campaign funds from the Brand after contract acceptance and automatically releases them to the Creator upon successful verification of deliverables by the AI Decision Engine (or manual dispute resolution by Admins).
 

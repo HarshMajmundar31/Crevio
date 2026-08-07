@@ -54,7 +54,7 @@ export default function CampaignExecutionTimeline() {
         count: 2,
         status: 'DRAFT',
         contracts: [
-          { id: 'ACEE-9901', creatorName: 'Pending Creator', creatorHandle: 'Unassigned', value: 10000, deliverableTitle: '1x YouTube Video (>8 mins)', platform: 'YouTube', slaRemaining: '24 Hours' }
+          { id: 'CR-9901', creatorName: 'Pending Creator', creatorHandle: 'Unassigned', value: 10000, deliverableTitle: '1x YouTube Video (>8 mins)', platform: 'YouTube', slaRemaining: '24 Hours' }
         ]
       },
       {
@@ -63,7 +63,7 @@ export default function CampaignExecutionTimeline() {
         count: 3,
         status: 'PENDING',
         contracts: [
-          { id: 'ACEE-9912', creatorName: 'Alex Tech', creatorHandle: '@alex_vlogs', value: 12500, deliverableTitle: '1x YouTube Integration', platform: 'YouTube', slaRemaining: '18 Hours' }
+          { id: 'CR-9912', creatorName: 'Alex Tech', creatorHandle: '@alex_vlogs', value: 12500, deliverableTitle: '1x YouTube Integration', platform: 'YouTube', slaRemaining: '18 Hours' }
         ]
       },
       {
@@ -73,25 +73,25 @@ export default function CampaignExecutionTimeline() {
         status: 'SIGNED_REVIEW',
         contracts: [
           {
-            id: 'ACEE-9921',
+            id: 'CR-9921',
             creatorName: 'Sarah Beauty',
             creatorHandle: '@beauty_sarah',
             value: 15000,
             deliverableTitle: '1x Dedicated Review Video + 2x Stories',
             platform: 'YouTube & IG',
             slaRemaining: '12 Hours',
-            signedFileUrl: 'contract_acee9921_signed_sarah.pdf',
+            signedFileUrl: 'contract_cr9921_signed_sarah.pdf',
             signedFileHash: '9f8e7d6c5b4a3f2e1d0c9b8a7f6e5d4c3b2a1f0e9d8c7b6a5f4e3d2c1b0a9f8e'
           },
           {
-            id: 'ACEE-9922',
+            id: 'CR-9922',
             creatorName: 'John Glam',
             creatorHandle: '@glam_john',
             value: 8500,
             deliverableTitle: '2x Instagram Reels',
             platform: 'Instagram',
             slaRemaining: '36 Hours',
-            signedFileUrl: 'contract_acee9922_signed_john.pdf',
+            signedFileUrl: 'contract_cr9922_signed_john.pdf',
             signedFileHash: '1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b'
           }
         ]
@@ -102,7 +102,7 @@ export default function CampaignExecutionTimeline() {
         count: 4,
         status: 'LOCKED',
         contracts: [
-          { id: 'ACEE-9930', creatorName: 'Mia Lifestyle', creatorHandle: '@mia_lifestyle', value: 20000, deliverableTitle: 'Dedicated Campaign Series', platform: 'TikTok', slaRemaining: '3 Days' }
+          { id: 'CR-9930', creatorName: 'Mia Lifestyle', creatorHandle: '@mia_lifestyle', value: 20000, deliverableTitle: 'Dedicated Campaign Series', platform: 'TikTok', slaRemaining: '3 Days' }
         ]
       },
       {
@@ -112,7 +112,7 @@ export default function CampaignExecutionTimeline() {
         status: 'EXECUTING',
         contracts: [
           {
-            id: 'ACEE-9940',
+            id: 'CR-9940',
             creatorName: 'Glow Tech',
             creatorHandle: '@glow_tech',
             value: 18000,
@@ -131,7 +131,7 @@ export default function CampaignExecutionTimeline() {
         count: 3,
         status: 'COMPLETED',
         contracts: [
-          { id: 'ACEE-9950', creatorName: 'Emma Beauty', creatorHandle: '@emma_beauty', value: 15000, deliverableTitle: 'Completed Campaign Deliverable', platform: 'YouTube', slaRemaining: 'Settled' }
+          { id: 'CR-9950', creatorName: 'Emma Beauty', creatorHandle: '@emma_beauty', value: 15000, deliverableTitle: 'Completed Campaign Deliverable', platform: 'YouTube', slaRemaining: 'Settled' }
         ]
       }
     ]
@@ -142,7 +142,7 @@ export default function CampaignExecutionTimeline() {
   const handleStageAction = (actionName: string, contractId: string) => {
     toast({
       title: `${actionName} Executed`,
-      description: `Contract ${contractId} updated in ACEE Execution Matrix.`,
+      description: `Contract ${contractId} updated in Crevio Execution Matrix.`,
     });
   };
 
@@ -307,7 +307,7 @@ export default function CampaignExecutionTimeline() {
                         <span className="font-semibold text-foreground">Live Evidence Submission Active</span>
                       </div>
                       <Badge variant="outline" className="text-[9px] font-mono text-emerald-500 border-emerald-500/30">
-                        {c.aiVerificationScore}% ACEE MATCH SCORE
+                        {c.aiVerificationScore}% CREVIO MATCH SCORE
                       </Badge>
                     </div>
                     <div className="font-mono text-[10px] text-muted-foreground truncate">

@@ -132,7 +132,7 @@ router.get('/risk-alerts', async (req, res, next) => {
       alerts.push({
         id: `ALERT-UNASSIGNED-${row.id}`,
         severity: 'WARNING',
-        contractNumber: `#ACEE-${row.id.substring(0,6)}`,
+        contractNumber: `#CR-${row.id.substring(0,6)}`,
         creatorHandle: 'Unassigned',
         title: `No Creator Selected for Campaign ${row.cmp_title}`,
         description: 'Campaign contract drafted. Dispatch invite or match creator.',
@@ -157,7 +157,7 @@ router.get('/risk-alerts', async (req, res, next) => {
       alerts.push({
         id: `ALERT-ESCROW-${row.id}`,
         severity: 'HIGH',
-        contractNumber: `#ACEE-${row.id.substring(0,6)}`,
+        contractNumber: `#CR-${row.id.substring(0,6)}`,
         creatorHandle: row.creator_name || '@unknown',
         title: 'Signed Contract Ready for Escrow Lock',
         description: `Creator accepted. Deposit $${row.payment_amount} to lock terms.`,
@@ -205,7 +205,7 @@ router.get('/activity-stream', async (req, res, next) => {
         timestamp: row.created_at,
         type: row.event_type,
         actor: row.actor_name || 'System Engine',
-        description: `${row.event_type} - Contract #ACEE-${(row.contract_id || 'UNK').substring(0,6)}`,
+        description: `${row.event_type} - Contract #CR-${(row.contract_id || 'UNK').substring(0,6)}`,
         badge
       };
     });

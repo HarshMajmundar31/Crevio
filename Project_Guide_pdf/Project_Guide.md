@@ -67,7 +67,7 @@ Recommendation: Consider starting with Mindee to evaluate the extraction results
 
 ## A Project Report
 on
-## ACEMS
+## Crevio
 
 
 Submitted by
@@ -102,7 +102,7 @@ in
 
 ## A Project Report
 on
-## ACEMS
+## Crevio
 
 
 
@@ -137,7 +137,7 @@ Mr.Raunak raj
 ## CERTIFICATE
 
 
-This is to certify that the Project Report entitled, “ACEMS” submitted by “MAJMUNDAR HARSH,
+This is to certify that the Project Report entitled, “Crevio” submitted by “MAJMUNDAR HARSH,
 THAKOR HARSHRAJ, PATEL DHRUV, PARMAR DIVYASINH” to Parul University,
 Vadodara, Gujarat, is a record of Bonafide Project work carried out by them under my supervision and
 guidance,  and  is  worthy  of  consideration  for  the  award  of  the  degree  of Bachelor  of  Technology in
@@ -183,7 +183,7 @@ Head, Dept. of Information Technology
 ## Designation:
 
 
-Team-id : PIET_10   ACEMS
+Team-id : PIET_10   Crevio
 i
 
 ## ACKNOWLEDGEMENT
@@ -202,18 +202,18 @@ precious advices, guidance and leadership.
 
 
 
-Team-id : PIET_10   ACEMS
+Team-id : PIET_10   Crevio
 ii
 
 ## ABSRACT
 The influencer marketing industry frequently faces challenges which include contract disputes
 and  delayed  payments together with disputes about deliverables and the lack of neutral
 enforcement methods which should  exist  between  brands  and  content  creators.  The  project
-introduces  The  Autonomous  Contract  Execution  and  Monitoring  System  (ACEMS)  which
+introduces  The  Autonomous  Contract  Execution  and  Monitoring  System  (Crevio)  which
 operates as a backend third-party system that automatically manages contract processes through
 unbiased and secure methods. The system achieves contract execution through its  automated
 processes while creating equitable conditions for all aspects of contract execution.
-ACEMS system operates through secure API layers which enable users to manage campaigns
+Crevio system operates through secure API layers which enable users to manage campaigns
 and contracts while using an AI-powered creator–brand matching system that matches creators
 with  brands  according  to  their performance metrics. The system includes a rule-based state
 machine which enforces contract rules and  maintains  contract  terms  until  both  parties  reach
@@ -233,7 +233,7 @@ impartial contract management operations.
 
 
 
-Team-id : PIET_10   ACEMS
+Team-id : PIET_10   Crevio
 iii
 
 
@@ -278,7 +278,7 @@ List of Figures V
 ## 17
 
 
-Team-id : PIET_10   ACEMS
+Team-id : PIET_10   Crevio
 iv
 
 ## 4.2 Implementation
@@ -301,7 +301,7 @@ iv
 ## 8. References 29
 
 
-Team-id : PIET_10   ACEMS
+Team-id : PIET_10   Crevio
 v
 
 
@@ -323,7 +323,7 @@ v
 ## Figure 4.1.2.1 Authentication Workflow Diagram 21
 ## Figure 4.1.2.2 Decision Logic System 22
 ## Figure 4.1.2.3 Complete Contract Lifecycle Flow 23
-Figure 4.1.3.1 Sequence Diagram of ACEMS 24
+Figure 4.1.3.1 Sequence Diagram of Crevio 24
 ## Figure 4.1.3.2 Creator Sequence Diagram 24
 ## Figure 4.1.3.3 Brand Sequence Diagram 25
 ## Figure 4.1.3.4 Decision Engine Processing Diagram 25
@@ -333,7 +333,7 @@ Figure 4.1.3.1 Sequence Diagram of ACEMS 24
 ## Table 2.1 Research Paper
 
 
-Team-id : PIET_10   ACEMS
+Team-id : PIET_10   Crevio
 Page 1 of 30
 
 
@@ -359,11 +359,11 @@ Thus, it is highly desired that a secure and automated and unbiased system can h
 contracts end-to-end, without human influence. The issue to this project is the deficit of a scalable
 backing framework that has the ability to implement contract logic and track deliverables in real-
 time and perform payments in  a  transparent  manner.  The  suggested  Autonomous  Contract
-Execution and Monitoring System (ACEMS) seeks to resolve these issues by giving an immutable,
+Execution and Monitoring System (Crevio) seeks to resolve these issues by giving an immutable,
 rule-based, and auditable contract execution system to influencer marketing systems
 
 
-Team-id : PIET_10   ACEMS
+Team-id : PIET_10   Crevio
 Page 2 of 30
 
 ## 1.2 MOTIVATION:-
@@ -388,17 +388,17 @@ delays in decision-making, as such reliance on human judgment is possible. Moreo
 lack of formal monitoring mechanisms, it is hard to keep credible records that can be used to support
 compliance results. Such transparency lack leads to less accountability and greater chances of conflict
 once the campaigns are over.
-The rationale of the Autonomous Contract Execution and Monitoring System (ACEMS) creation is
+The rationale of the Autonomous Contract Execution and Monitoring System (Crevio) creation is
 thus  to  overcome  such  hurdles  with  the  introduction  of  an  automated  and  transparent  contract
 management  system  without  being  biased  in  influencer  contract  management.  The  system  will
 enhance the level of trust between brands and creators since the execution of the contract will be
 carried out fairly and consistently. Removing the subjective side of decision-making and providing
-an  opportunity  to  monitor  campaign  deliverables  in  real-time,  ACEMS  plans  to  minimize  any
+an  opportunity  to  monitor  campaign  deliverables  in  real-time,  Crevio  plans  to  minimize  any
 controversy,  enhance  efficiency  in  operations,  and  create  a  stable  governance  system  within  the
 digital creator partnerships.
 
 
-Team-id : PIET_10   ACEMS
+Team-id : PIET_10   Crevio
 Page 3 of 30
 
 
@@ -420,7 +420,7 @@ influencer marketing processes.
 Lastly, the project will also develop a scalable and modular system architecture that can be extended
 through  future  developments  to  include  AI-driven  contract  analysis,  advanced  compliance
 assessment,  and  connection  to  various  social  media  platforms.  By  means  of  these  goals,  the
-Autonomous Contract Execution and Monitoring System (ACEMS) proposed is aimed at offering
+Autonomous Contract Execution and Monitoring System (Crevio) proposed is aimed at offering
 a  trusted framework under which the  management of the influencer marketing contracts may be
 carried out effectively and without bias.
 
@@ -428,11 +428,11 @@ carried out effectively and without bias.
 This project scope is dedicated to the design and development of an automated contract execution
 and  monitoring  system  in  the  influence  marketing  platforms  based  on  the  backend.  The  system
 concerns  mainly  the  difficulties  associated  with  enforcement  of  the  contract  and  verification  of
-compliance and execution of payment between the brands and creators of the content. ACEMS is
+compliance and execution of payment between the brands and creators of the content. Crevio is
 supposed to be a neutral back office entity, which makes the contract lifecycle fair and consistent.
 
 
-Team-id : PIET_10   ACEMS
+Team-id : PIET_10   Crevio
 Page 4 of 30
 
 The project encompasses the initiation of secure contract management capabilities, such as creation
@@ -450,12 +450,12 @@ connectivity to external social media. The further development of such functions
 contracts,  resolving  disagreements  with  the  help  of  the  legal  systems,  and  real-time  analytics  in
 social media is regarded as out of scope of the current implementation.
 As regards the future scope, the system can be scaled to accommodate superior AI-based contract
-analysis,  cross-platform  integrations,  and  better  compliance  assessment  procedures.  ACEMS  is
+analysis,  cross-platform  integrations,  and  better  compliance  assessment  procedures.  Crevio  is
 scalable and adaptable with the modular architecture, which is why it can be adopted into various
 digital creator ecosystem
 
 
-Team-id : PIET_10   ACEMS
+Team-id : PIET_10   Crevio
 Page 5 of 30
 
 
@@ -543,7 +543,7 @@ mature enough for widespread
 practical adoption yet.
 
 
-Team-id : PIET_10   ACEMS
+Team-id : PIET_10   Crevio
 Page 6 of 30
 
 
@@ -606,7 +606,7 @@ and scalability remains
 unproven.
 
 
-Team-id : PIET_10   ACEMS
+Team-id : PIET_10   Crevio
 Page 7 of 30
 
 
@@ -678,7 +678,7 @@ automated execution or
 monitoring system is proposed.
 
 
-Team-id : PIET_10   ACEMS
+Team-id : PIET_10   Crevio
 Page 8 of 30
 
 
@@ -749,7 +749,7 @@ parties raises unresolved
 privacy concerns.
 
 
-Team-id : PIET_10   ACEMS
+Team-id : PIET_10   Crevio
 Page 9 of 30
 
 
@@ -795,7 +795,7 @@ limits broader adoption of the
 pattern.
 
 
-Team-id : PIET_10   ACEMS
+Team-id : PIET_10   Crevio
 Page 10 of 30
 
 ## 15 2024 Yu Sun,
@@ -860,7 +860,7 @@ large or complex codebases.
 
 
 
-Team-id : PIET_10   ACEMS
+Team-id : PIET_10   Crevio
 Page 11 of 30
 
 
@@ -945,7 +945,7 @@ to push runtime upgrades
 once the contract is live.
 
 
-Team-id : PIET_10   ACEMS
+Team-id : PIET_10   Crevio
 Page 12 of 30
 
 
@@ -976,7 +976,7 @@ legal processes.
 coverage because this method enables early detection of access control.
 
 
-Team-id : PIET_10   ACEMS
+Team-id : PIET_10   Crevio
 Page 13 of 30
 
 
@@ -1014,7 +1014,7 @@ accuracy  reduction when they process smart contract projects which consist of e
 detailed components or sophisticated elements.
 
 
-Team-id : PIET_10   ACEMS
+Team-id : PIET_10   Crevio
 Page 14 of 30
 
 ## CHAPTER 3 PROBLEM DEFINITION
@@ -1039,7 +1039,7 @@ deliverables  and  imposes  payments  or  fines unless  the  human  touch  is  a
 need  to  be  addressed  with  the  aim  of  enhancing  fairness,  efficiency,  and  reliability  in  the
 management of influencer marketing contract.
 ## 3.2 Requirement Analysis : -
-The requirement analysis is an important process during system development of ACEMS, since it
+The requirement analysis is an important process during system development of Crevio, since it
 determines what the system should attain to address the problems identified. The main objective of
 this  step  is  to  know  the  expectations  of  the  users  and  translate  them  into  understandable  system
 functions. The system requirements are derived after evaluating the current contract management
@@ -1051,18 +1051,18 @@ payment  status.  IT  administrators  need  complete  access  to  system  monito
 resolution of disputes.
 
 
-Team-id : PIET_10   ACEMS
+Team-id : PIET_10   Crevio
 Page 15 of 30
 
 Functional  requirements  concentrate  on  automated  contract  execution,  rule-based  compliance
 check,   real-time   deliverable   tracking   and   automated   payment   processing.   Non-functional
 requirements  focus  on  the  security,  scalability,  performance  and  reliability  factors  in  order  to
-provide a smooth running of the system. Sound requirement analysis will make sure that ACEMS
+provide a smooth running of the system. Sound requirement analysis will make sure that Crevio
 fulfills  the  technical  requirement  and  the  user  expectation  providing  a  solid  base  to  the  system
 design and implementation.
 ## 3.2.1 User Requirements : -
 User requirement is the expectation and requirement of all the stakeholders who interact with the
-ACEMS  platform.  The  main  consumers  of  the  system  are  the  brands,  content  creators  and
+Crevio  platform.  The  main  consumers  of  the  system  are  the  brands,  content  creators  and
 administrators  of  the  system,  who  need  to  have  certain  functionalities  to  carry  out  their  duties
 effectively.  These  requirements  are  essential  in  ensuring  that  the  system  is  not  complicated,  is
 reliable and also that it complies with real life use cases.
@@ -1078,7 +1078,7 @@ notifications. With these user requirements, the interaction process, trust, and
 contract management system will be smooth.
 
 ## 3.2.2 Functional Requirements :-
- Functional requirements explain the operations and features that the ACEMS system will
+ Functional requirements explain the operations and features that the Crevio system will
 be required to carry out. These requirements determine how the system is going to behave
 and how various components will relate to each other to make sure the contract is run and
 monitored  smoothly.  They  are  concerned  with  automation  of  processes  which are  being
@@ -1089,7 +1089,7 @@ assist in approving contracts automatically, locking approved contracts and impl
 rule without human intervention. Creators should also be allowed to apply to campaigns,
 
 
-Team-id : PIET_10   ACEMS
+Team-id : PIET_10   Crevio
 Page 16 of 30
 
 accept contracts, and deliverables within given deadlines through the system.
@@ -1100,7 +1100,7 @@ maintain accountability, transparency and reliability of the system.
 
 3.2.3 Non-Functional Requirements : -
  The  non-functional  requirements  specify  quality,  the  performance,  and  the  reliability
-requirements  that  the  ACEMS  system  shall  have.  These  specifications  make  the  system
+requirements  that  the  Crevio  system  shall  have.  These  specifications  make  the  system
 run in an efficient and safe manner, at varying conditions. Although they are not detailed
 of   particular   functions,  they   have   a   significant   influence   on   user   experience   and
 trustworthiness of the system.
@@ -1113,10 +1113,10 @@ performance.
  The  other  important  one  is  reliability  and  availability  which  means  that  there  would  be
 minimum  downtime  and  constant  operation.  The  system  should  be  able to  keep  correct
 audit records  and should provide  fault recovery. These  non-functional requirements  will
-make sure that ACEMS is reliable and secure enough to support real-life workload.
+make sure that Crevio is reliable and secure enough to support real-life workload.
 
 
-Team-id : PIET_10   ACEMS
+Team-id : PIET_10   Crevio
 Page 17 of 30
 
 ## CHAPTER 4 DESIGN AND IMPLEMENTATION
@@ -1156,17 +1156,17 @@ unauthorized access and trust among the users of the system.
 
 
 
-Team-id : PIET_10   ACEMS
+Team-id : PIET_10   Crevio
 Page 18 of 30
 
 ## 4.1.1 Use Case Diagram : -
 
 
 ## Figure 4.1.1.1 Contract Execution
-This above figure represents the Contract Execution process in the ACEMS system. Once a contract
-is accepted  by both parties, ACEMS first locks  the  contract to prevent any further changes. The
+This above figure represents the Contract Execution process in the Crevio system. Once a contract
+is accepted  by both parties, Crevio first locks  the  contract to prevent any further changes. The
 system then  interacts  with an  external Verification Service to confirm the  contract details.  After
-verification,  ACEMS  checks  the  post  timestamp  to  ensure  deliverables  are  submitted  on  time.
+verification,  Crevio  checks  the  post  timestamp  to  ensure  deliverables  are  submitted  on  time.
 Finally, the system validates the creator’s deliverables to determine compliance before proceeding
 with payment or penalties.
 
@@ -1179,12 +1179,12 @@ view  the  contract  status  to  track  approval and  progress.  This  ensures  
 contract creation from the brand’s side.
 
 
-Team-id : PIET_10   ACEMS
+Team-id : PIET_10   Crevio
 Page 19 of 30
 
 
 ## Figure 4.1.1.3 Content Verification System
-Here, Content Verification system sends a Request Content Verification in response to the ACEMS
+Here, Content Verification system sends a Request Content Verification in response to the Crevio
 actor  requesting  it. The  system  then  communicates  with  the  Social  Media  API  to  retrieve  the
 necessary  information  on  the  post.   Then,  it  checks  the  post  date,  i.e.  whether it  was  within  the
 required time frame or not. Finally, it improves the confirmation of engagement indicators (likes,
@@ -1198,7 +1198,7 @@ creator accepts the contract and submits the required deliverables. The system a
 to track their payment status, ensuring clarity and trust throughout the campaign lifecycle.
 
 
-Team-id : PIET_10   ACEMS
+Team-id : PIET_10   Crevio
 Page 20 of 30
 
 
@@ -1217,7 +1217,7 @@ transparency and reliability. In short, it’s a dashboard of tools for keeping 
 smoothly and accountable.
 
 
-Team-id : PIET_10   ACEMS
+Team-id : PIET_10   Crevio
 Page 21 of 30
 
 4.1.2 Flow Chart of System : -
@@ -1233,7 +1233,7 @@ back.  The  user  then  includes this token in future requests to prove they’r
 secure way to manage login session.
 
 
-Team-id : PIET_10   ACEMS
+Team-id : PIET_10   Crevio
 Page 22 of 30
 
 
@@ -1247,7 +1247,7 @@ deliverables  (like  platform  match  and  post  count),  deadlines,  and  compl
 disclosures and prohibited content).
 
 
-Team-id : PIET_10   ACEMS
+Team-id : PIET_10   Crevio
 Page 23 of 30
 
 
@@ -1260,14 +1260,14 @@ can’t be changed. Later, the brand executes the contract, and the system evalu
 were followed. The outcome is either success or failure, ensuring fairness and immutability
 
 
-Team-id : PIET_10   ACEMS
+Team-id : PIET_10   Crevio
 Page 24 of 30
 
 ## 4.1.3 Sequence Diagram : -
 
 
-Figure 4.1.3.1 Sequence Diagram of ACEMS
-The diagram  illustrates  how  the  ACEMS  system  manages  user  interactions,  authentication,  data
+Figure 4.1.3.1 Sequence Diagram of Crevio
+The diagram  illustrates  how  the  Crevio  system  manages  user  interactions,  authentication,  data
 handling,  and  contract  verification.  It  shows  the  step-by-step  flow  of  requests  between  the  user,
 frontend, backend, database, and contract verification module, ensuring secure login, efficient employee
 data management, and reliable contract validation.
@@ -1281,7 +1281,7 @@ verification system before confirming back to the creator.
 
 
 
-Team-id : PIET_10   ACEMS
+Team-id : PIET_10   Crevio
 Page 25 of 30
 
 
@@ -1302,7 +1302,7 @@ ensuring a structured and rule-based process for handling requests.
 
 
 
-Team-id : PIET_10   ACEMS
+Team-id : PIET_10   Crevio
 Page 26 of 30
 
 
@@ -1327,7 +1327,7 @@ consistently and decisions are generated based on predefined rules.
 
 
 
-Team-id : PIET_10   ACEMS
+Team-id : PIET_10   Crevio
 Page 27 of 30
 
 
@@ -1341,12 +1341,12 @@ highlights how contracts, queries, and rules are processed in a structured flow 
 validation and timely communication.
 
 
-Team-id : PIET_10   ACEMS
+Team-id : PIET_10   Crevio
 Page 28 of 30
 
 ## CHAPER 7 CONCLUSION
 
-Autonomous Contract Execution and Monitoring System (ACEMS) is one of the effective solutions
+Autonomous Contract Execution and Monitoring System (Crevio) is one of the effective solutions
 to addressing the problem of digital contracts between content creators and brands. Conventionally
 managed  contract  processes  are  prone  to  manual  monitoring  that  might  be  time  consuming,
 conflicts and lack of transparency. The proposed system automatizes the contract implementation
@@ -1356,7 +1356,7 @@ The  system  increase  reliability,  accountability,  and  transparency  in  the
 partnerships by establishing automated checks and balances systems. It reduces the use of hands
 and helps in maintaining an orderly record of the activities in the contract at the various stages of
 the contract lifecycle.
-Overall, ACEMS demonstrates that digital contract management systems can be enhanced with the
+Overall, Crevio demonstrates that digital contract management systems can be enhanced with the
 help of automation and intelligent monitoring since the collusion between stakeholders will be more
 efficient, secure and trustworthy.
 
@@ -1375,7 +1375,7 @@ efficient, secure and trustworthy.
 
 
 
-Team-id : PIET_10   ACEMS
+Team-id : PIET_10   Crevio
 Page 29 of 30
 
 ## CHAPTER 8 REFERENCE
@@ -1414,7 +1414,7 @@ machines in model-driven smart contract development,” IEEE Access, 2022.
 supply chain risk management,” AJRI, 2025.
 
 
-Team-id : PIET_10   ACEMS
+Team-id : PIET_10   Crevio
 Page 30 of 30
 
 [17] R. Hofstetter, A. Lanz, and N. S. Sahni, “Contract design in influencer marketing,” 2024.

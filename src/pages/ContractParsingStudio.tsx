@@ -112,7 +112,7 @@ export default function ContractParsingStudio() {
             <div>
               <div className="flex items-center gap-2">
                 <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20 text-[10px] uppercase font-mono">
-                  ACEE Ingestion Engine
+                  Crevio Ingestion Engine
                 </Badge>
                 <span className="text-xs text-muted-foreground">• Side-by-Side Dual Pane Verification</span>
               </div>
@@ -139,7 +139,7 @@ export default function ContractParsingStudio() {
             <div className="space-y-1">
               <h3 className="text-base font-semibold text-foreground">Upload Contract Document (.PDF or .DOCX)</h3>
               <p className="text-xs text-muted-foreground max-w-sm mx-auto">
-                ACEE will compute the cryptographic SHA-256 checksum and parse deliverables, payment terms, and compliance rules.
+                Crevio will compute the cryptographic SHA-256 checksum and parse deliverables, payment terms, and compliance rules.
               </p>
             </div>
             <div>
@@ -212,7 +212,7 @@ export default function ContractParsingStudio() {
               {isParsing ? (
                 <div className="py-12 text-center space-y-3">
                   <RefreshCw className="w-8 h-8 text-primary animate-spin mx-auto" />
-                  <h3 className="text-sm font-semibold">ACEE Natural Language Parser Active...</h3>
+                  <h3 className="text-sm font-semibold">Crevio Natural Language Parser Active...</h3>
                   <p className="text-xs text-muted-foreground">Extracting execution rules, milestones, deadlines, and checksums.</p>
                 </div>
               ) : (
@@ -223,7 +223,7 @@ export default function ContractParsingStudio() {
                       <Sparkles className="w-4 h-4 text-emerald-500" />
                       <div>
                         <span className="text-xs font-semibold text-foreground">Parser Extraction Complete</span>
-                        <p className="text-[10px] text-muted-foreground">High confidence extraction verified against ACEE legal schema.</p>
+                        <p className="text-[10px] text-muted-foreground">High confidence extraction verified against Crevio legal schema.</p>
                       </div>
                     </div>
                     <Badge variant="outline" className="bg-emerald-500/20 text-emerald-500 border-emerald-500/30 font-mono text-xs">
@@ -317,7 +317,7 @@ export default function ContractParsingStudio() {
                           <Button size="sm" className="text-xs h-8 shrink-0">Send Invitation</Button>
                         </div>
                         <p className="text-[10px] text-muted-foreground">
-                          ACEE will dispatch a secure portal link. Creator will download, review, and re-upload the signed contract PDF.
+                          Crevio will dispatch a secure portal link. Creator will download, review, and re-upload the signed contract PDF.
                         </p>
                       </div>
                     )}
@@ -344,7 +344,7 @@ export default function ContractParsingStudio() {
                         <div className="flex items-center justify-between">
                           <span className="text-xs font-semibold text-foreground">Matched Creators for $12,500 YouTube Campaign</span>
                           <Badge variant="outline" className="text-[9px] bg-amber-500/10 text-amber-500 border-amber-500/30">
-                            ACEE SUITABILITY ENGINE
+                            CREVIO SUITABILITY ENGINE
                           </Badge>
                         </div>
 
