@@ -178,7 +178,8 @@ export default function Campaigns() {
             className="glass-card-elevated overflow-hidden group hover:-translate-y-1 transition-all duration-300 border border-border/50 hover:border-primary/30 hover:shadow-xl hover:shadow-primary/5 flex flex-col"
           >
             <div 
-              className="relative h-40 overflow-hidden"
+              className="relative h-40 overflow-hidden cursor-pointer"
+              onClick={() => navigate(`/campaigns/${campaign.id}`)}
               style={{
                 background: campaign.cover_image_url 
                   ? `url(${campaign.cover_image_url}) center/cover no-repeat` 
@@ -225,18 +226,24 @@ export default function Campaigns() {
               </div>
 
               {role === 'creator' && (
-                <Button
-                  size="sm"
-                  className="w-full text-xs font-semibold mt-2 group/btn"
-                  onClick={() => navigate(`/campaigns/${campaign.id}/apply`)}
-                  disabled={Boolean(campaign.has_applied) || campaign.status !== 'active'}
-                >
-                  <Users className="w-3.5 h-3.5 mr-1.5" />
-                  {campaign.has_applied
-                    ? 'Application Submitted'
-                    : 'Apply Now'}
-                  <ArrowUpRight className="w-3 h-3 ml-auto opacity-50 group-hover/btn:opacity-100 transition-opacity" />
-                </Button>
+                <div className="flex items-center gap-2 mt-auto pt-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="flex-1 text-xs font-semibold border-primary/20 text-primary hover:bg-primary/10"
+                    onClick={() => navigate(`/campaigns/${campaign.id}`)}
+                  >
+                    View Details
+                  </Button>
+                  <Button
+                    size="sm"
+                    className="flex-1 text-xs font-semibold gradient-primary text-primary-foreground shadow-sm"
+                    onClick={() => navigate(`/campaigns/${campaign.id}/apply`)}
+                    disabled={Boolean(campaign.has_applied) || campaign.status !== 'active'}
+                  >
+                    {campaign.has_applied ? 'Submitted' : 'Apply Now'}
+                  </Button>
+                </div>
               )}
 
               {(role === 'brand' || role === 'admin') && (

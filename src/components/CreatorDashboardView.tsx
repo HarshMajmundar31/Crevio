@@ -402,13 +402,23 @@ export default function CreatorDashboardView({ displayName }: CreatorDashboardVi
                     <span className="font-semibold text-emerald-500">
                       Budget: {formatCurrency(camp.budget_min || camp.budget || 1000)} - {formatCurrency(camp.budget_max || camp.budget || 3000)}
                     </span>
-                    <Button
-                      size="sm"
-                      className="h-7 text-[11px] gradient-primary text-primary-foreground px-3"
-                      onClick={() => navigate(`/campaigns/${camp.id}/apply`)}
-                    >
-                      Apply Now
-                    </Button>
+                    <div className="flex items-center gap-1.5">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-7 text-[11px] px-2.5"
+                        onClick={() => navigate(`/campaigns/${camp.id}`)}
+                      >
+                        View Details
+                      </Button>
+                      <Button
+                        size="sm"
+                        className="h-7 text-[11px] gradient-primary text-primary-foreground px-3 font-semibold"
+                        onClick={() => navigate(`/campaigns/${camp.id}/apply`)}
+                      >
+                        Apply Now
+                      </Button>
+                    </div>
                   </div>
                 </div>
               ))}
