@@ -8,6 +8,8 @@ import Step3_BrandProfile from './brand/Step3_BrandProfile';
 import Step5_InviteTeam from './brand/Step5_InviteTeam';
 import Step6_Legal from './brand/Step6_Legal';
 
+import { LogoIcon } from '@/components/LogoIcon';
+
 const steps = [
   { id: 1, title: 'Workspace', description: 'Create your brand space' },
   { id: 2, title: 'LinkedIn', description: 'Verify professional identity' },
@@ -67,10 +69,11 @@ export default function BrandOnboarding() {
         <div className="max-w-5xl mx-auto px-6 py-4">
           <div className="flex items-center justify-between mb-8">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl gradient-accent flex items-center justify-center shadow-lg">
-                <Shield className="w-5 h-5 text-accent-foreground" />
+              <LogoIcon className="w-9 h-9 shrink-0" />
+              <div>
+                <span className="font-bold text-lg tracking-tight text-foreground">Crevio Brand Onboarding</span>
+                <p className="text-[10px] text-muted-foreground uppercase tracking-wider -mt-0.5">Workspace & Identity Setup</p>
               </div>
-              <span className="font-bold text-xl tracking-tight">Crevio Onboarding</span>
             </div>
             <div className="text-sm font-medium text-muted-foreground">
               Step {steps.findIndex(s => s.id === currentStep) + 1} of {steps.length}
