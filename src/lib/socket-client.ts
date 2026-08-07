@@ -4,14 +4,7 @@ let socket: Socket | null = null;
 
 export function getSocket(): Socket {
   if (!socket) {
-    const socketUrl =
-      import.meta.env.VITE_API_URL !== undefined && import.meta.env.VITE_API_URL !== ''
-        ? import.meta.env.VITE_API_URL
-        : import.meta.env.DEV
-        ? 'http://localhost:3000'
-        : typeof window !== 'undefined'
-        ? window.location.origin
-        : '';
+    const socketUrl = import.meta.env.VITE_API_URL || (typeof window !== 'undefined' ? window.location.origin : '');
     socket = io(socketUrl, {
       transports: ['websocket', 'polling'],
       autoConnect: true,

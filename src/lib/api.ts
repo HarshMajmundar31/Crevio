@@ -1,11 +1,6 @@
 export const AUTH_TOKEN_KEY = 'crevio_auth_token';
 
-const API_BASE_URL =
-  import.meta.env.VITE_API_URL !== undefined && import.meta.env.VITE_API_URL !== ''
-    ? import.meta.env.VITE_API_URL
-    : import.meta.env.DEV
-    ? 'http://localhost:3000'
-    : '';
+const API_BASE_URL = import.meta.env.VITE_API_URL || '';
 
 type HttpMethod = 'GET' | 'POST' | 'PATCH' | 'DELETE';
 
@@ -622,6 +617,30 @@ export async function apiAdminSettleDispute(contractId: string, creatorPercent: 
     `/api/payments/contracts/${contractId}/simulate-release`,
     'POST',
     { creatorPercent, brandPercent }
+  );
+}
+
+export async function apiCreateDepositOrder(amount: number) {
+  return request<{ orderId: string; amount: number; currency: string; keyId: string }>(
+    '/api/payments/deposit/create-order',
+    'POST',
+    { amount }
+  );
+}
+
+export async function apiVerifyDepositPayment(payload: { razorpay_payment_id: string; razorpay_order_id: string; razorpay_signature: string; amount: number }) {
+  return request<{ success: boolean; balance: number }>(
+    '/api/payments/deposit/verify',
+    'POST',
+    payload
+  );
+}
+
+export async function apiWithdrawFunds(payload: { amount: number; paymentMethod: string; paymentDetails: string }) {
+  return request<{ success: boolean; balance: number }>(
+    '/api/payments/withdraw',
+    'POST',
+    payload
   );
 }
 
