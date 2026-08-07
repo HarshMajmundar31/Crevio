@@ -202,7 +202,9 @@ export default function Campaigns() {
               
               <div className="absolute bottom-3 left-3 right-3 flex items-end justify-between">
                  <div className="bg-black/50 backdrop-blur-md p-2 rounded-lg border border-white/10 max-w-[80%]">
-                    <span className="text-[10px] text-white/70 font-semibold uppercase tracking-wider block mb-0.5">{campaign.brand_name}</span>
+                    <span className="text-[10px] text-white/70 font-semibold uppercase tracking-wider block mb-0.5">
+                      {!campaign.brand_name || campaign.brand_name.includes('ACEMS') ? 'Brand Partner' : campaign.brand_name}
+                    </span>
                     <h3 className="text-white font-bold text-sm leading-tight truncate">{campaign.title}</h3>
                  </div>
               </div>

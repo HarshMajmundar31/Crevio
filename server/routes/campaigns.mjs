@@ -254,7 +254,12 @@ router.get('/', requireAuth, async (req, res) => {
     params
   );
 
-  return res.json({ campaigns: result.rows });
+  const sanitizedCampaigns = result.rows.map(c => ({
+    ...c,
+    brand_name: (!c.brand_name || c.brand_name.includes('ACEMS')) ? 'Brand Partner' : c.brand_name
+  }));
+
+  return res.json({ campaigns: sanitizedCampaigns });
 });
 
 router.get('/:id', requireAuth, async (req, res) => {
@@ -281,6 +286,10 @@ router.get('/:id', requireAuth, async (req, res) => {
   const campaign = result.rows[0];
   if (!campaign) {
     return res.status(404).json({ error: 'Campaign not found' });
+  }
+
+  if (!campaign.brand_name || campaign.brand_name.includes('ACEMS')) {
+    campaign.brand_name = 'Brand Partner';
   }
 
   const canAccess = req.user.role === 'admin' || campaign.brand_id === req.user.userId || campaign.status === 'active';
