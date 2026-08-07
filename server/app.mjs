@@ -34,8 +34,11 @@ app.use('/api/v1/brand/dashboard', dashboardRoutes);
 app.use('/api/payments', paymentRoutes);
 
 app.use((error, _req, res, _next) => {
-  console.error(error);
-  res.status(500).json({ error: 'Internal server error' });
+  console.error('[API Error]', error);
+  res.status(500).json({
+    error: 'Internal server error',
+    message: error?.message || String(error),
+  });
 });
 
 export default app;
