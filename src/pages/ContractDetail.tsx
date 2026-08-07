@@ -18,10 +18,13 @@ import {
   updateDeliverableStatus,
   apiCreateRazorpayOrder,
   apiVerifyRazorpayPayment,
+  apiGetWallet,
+  apiFundContractWithWallet,
   type ApiContract,
   type ApiDecision,
   type ApiDeliverable,
   type ApiRule,
+  type ApiWallet,
 } from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
 
@@ -37,6 +40,7 @@ export default function ContractDetail() {
   const [dossier, setDossier] = useState<any>(null);
   const [busyAction, setBusyAction] = useState('');
   const [finalSubmissionUrl, setFinalSubmissionUrl] = useState('');
+  const [wallet, setWallet] = useState<ApiWallet | null>(null);
 
   const refresh = async () => {
     if (!id) return;
@@ -45,6 +49,15 @@ export default function ContractDetail() {
     setDeliverables(result.deliverables);
     setRules(result.rules);
     setDecision(result.decisions[0] || null);
+
+    if (user?.role === 'brand' || user?.role === 'admin') {
+      try {
+        const walletPayload = await apiGetWallet();
+        setWallet(walletPayload.wallet);
+      } catch (e) {
+        console.error("Failed to load wallet", e);
+      }
+    }
 
     if (user?.role === 'admin') {
       try {
@@ -84,6 +97,29 @@ export default function ContractDetail() {
       toast({
         title: 'Action failed',
         description: error instanceof Error ? error.message : 'Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setBusyAction('');
+    }
+  };
+
+  const handleWalletEscrow = async () => {
+    if (!contract) return;
+    setBusyAction('wallet');
+    try {
+      const res = await apiFundContractWithWallet(contract.id);
+      if (res.success) {
+        toast({
+          title: '🎉 Escrow Secured via Wallet Balance!',
+          description: `Successfully escrowed ₹${Number(contract.payment_amount).toLocaleString()} from your available wallet balance.`,
+        });
+        await refresh();
+      }
+    } catch (err: any) {
+      toast({
+        title: 'Wallet Funding Failed',
+        description: err?.message || 'Failed to complete wallet escrow payment.',
         variant: 'destructive',
       });
     } finally {
@@ -243,23 +279,55 @@ export default function ContractDetail() {
         )}
 
         {contract.status === 'accepted' && isBrand && (
-          <div className="mt-6 pt-6 border-t bg-accent/5 p-5 rounded-xl border border-accent/20 flex flex-col md:flex-row items-center justify-between gap-4">
-            <div className="space-y-1 max-w-xl">
-              <h3 className="font-bold text-sm flex items-center gap-1.5 text-accent">
-                <Lock className="w-4 h-4 text-accent animate-pulse-soft" /> Escrow Deposit Required
-              </h3>
-              <p className="text-xs text-muted-foreground">
-                To secure this contract and allow {contract.creator_name} to safely begin creating content, you must deposit the campaign funds into Crevio's secure Razorpay Escrow vault. Funds are held safely and only released when deliverables pass verification.
-              </p>
+          <div className="mt-6 pt-6 border-t bg-accent/5 p-6 rounded-xl border border-accent/20 space-y-4">
+            <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+              <div className="space-y-1 max-w-xl">
+                <h3 className="font-bold text-sm flex items-center gap-1.5 text-accent">
+                  <Lock className="w-4 h-4 text-accent animate-pulse-soft" /> Escrow Deposit Required
+                </h3>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  To secure this contract and allow {contract.creator_name} to safely begin creating content, you must deposit the campaign funds into Crevio's secure Escrow Vault. You can fund this contract instantly using your Available Wallet Balance or complete a test Sandbox payment via Razorpay.
+                </p>
+                <div className="text-xs mt-2 bg-background/50 inline-block px-3 py-1.5 rounded-lg border border-border/50 text-foreground">
+                  Your Available Wallet Balance: <span className="font-bold text-emerald-400">₹{Number(wallet?.available_balance || 0).toLocaleString()}</span> (Required: ₹{Number(contract.payment_amount).toLocaleString()})
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-2 w-full md:w-auto">
+                {Number(wallet?.available_balance || 0) >= Number(contract.payment_amount) ? (
+                  <>
+                    <Button
+                      className="gradient-emerald text-white font-bold shadow-glow-emerald px-5 py-2.5 h-11 text-xs uppercase tracking-wider shrink-0"
+                      onClick={handleWalletEscrow}
+                      disabled={busyAction !== ''}
+                    >
+                      {busyAction === 'wallet' ? 'Funding via Wallet...' : 'Pay with Wallet Balance'}
+                    </Button>
+                    <button
+                      className="text-xs text-muted-foreground hover:text-foreground underline transition-colors text-center"
+                      onClick={handleRazorpayEscrow}
+                      disabled={busyAction !== ''}
+                    >
+                      Or, Pay with Razorpay Gateway
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <Button
+                      className="gradient-accent text-accent-foreground font-semibold shadow-glow-accent px-5 py-2.5 h-11 shrink-0"
+                      onClick={handleRazorpayEscrow}
+                      disabled={busyAction !== ''}
+                    >
+                      <CreditCard className="w-4 h-4 mr-2" />
+                      {busyAction === 'razorpay' ? 'Generating Order...' : busyAction === 'verify' ? 'Verifying Payment...' : 'Fund Escrow with Razorpay'}
+                    </Button>
+                    <p className="text-[10px] text-muted-foreground text-center">
+                      Top up your wallet in the <Link to="/wallet" className="underline text-accent">Wallet Hub</Link> to pay via balance.
+                    </p>
+                  </>
+                )}
+              </div>
             </div>
-            <Button
-              className="gradient-accent text-accent-foreground font-semibold shrink-0 shadow-glow-accent px-5 py-2.5"
-              onClick={handleRazorpayEscrow}
-              disabled={busyAction === 'razorpay' || busyAction === 'verify'}
-            >
-              <CreditCard className="w-4 h-4 mr-2 animate-bounce-soft" />
-              {busyAction === 'razorpay' ? 'Generating Order...' : busyAction === 'verify' ? 'Verifying Payment...' : 'Fund Escrow with Razorpay'}
-            </Button>
           </div>
         )}
 

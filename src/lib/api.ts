@@ -653,4 +653,33 @@ export async function apiWithdrawFunds(payload: { amount: number; paymentMethod:
   );
 }
 
+export async function apiCreateCampaignOrder(campaignId: string) {
+  return request<{ orderId: string; amount: number; currency: string; keyId: string }>(
+    `/api/payments/campaigns/${campaignId}/create-order`,
+    'POST'
+  );
+}
+
+export async function apiVerifyCampaignPayment(campaignId: string, payload: { razorpay_payment_id: string; razorpay_order_id: string; razorpay_signature: string }) {
+  return request<{ success: boolean; status: string }>(
+    `/api/payments/campaigns/${campaignId}/verify-payment`,
+    'POST',
+    payload
+  );
+}
+
+export async function apiFundCampaignWithWallet(campaignId: string) {
+  return request<{ success: boolean; status: string; balance: number }>(
+    `/api/payments/campaigns/${campaignId}/fund-with-wallet`,
+    'POST'
+  );
+}
+
+export async function apiFundContractWithWallet(contractId: string) {
+  return request<{ success: boolean; status: string; balance: number }>(
+    `/api/payments/contracts/${contractId}/fund-with-wallet`,
+    'POST'
+  );
+}
+
 

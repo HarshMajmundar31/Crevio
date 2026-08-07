@@ -11,15 +11,20 @@ import {
   getCampaign, 
   getApplications, 
   updateApplicationStatus, 
+  apiCreateCampaignOrder,
+  apiVerifyCampaignPayment,
+  apiGetWallet,
+  apiFundCampaignWithWallet,
   type ApiCampaign, 
-  type ApiCampaignApplication 
+  type ApiCampaignApplication,
+  type ApiWallet
 } from '@/lib/api';
 import ContractStatusBadge from '@/components/ContractStatusBadge';
 import { 
   Calendar, DollarSign, Tag, Users, ArrowUpRight, ArrowLeft,
   FileText, ShieldCheck, Target, Award, Clock, Sparkles, CheckCircle2,
   Clock3, XCircle, FileSignature, ExternalLink, TrendingUp, BarChart3,
-  Filter, ArrowUpDown, UserCheck, Zap
+  Filter, ArrowUpDown, UserCheck, Zap, Loader2
 } from 'lucide-react';
 
 export default function CampaignDetail() {
@@ -40,6 +45,123 @@ export default function CampaignDetail() {
   // Filter & Sorting state for Participants
   const [participantStatusFilter, setParticipantStatusFilter] = useState<string>('all');
   const [participantSortBy, setParticipantSortBy] = useState<'fit_score' | 'fee_asc' | 'fee_desc' | 'newest'>('fit_score');
+
+  const [busyAction, setBusyAction] = useState<string | null>(null);
+  const [wallet, setWallet] = useState<ApiWallet | null>(null);
+
+  const handleFundCampaignWithWallet = async () => {
+    if (!campaign) return;
+    setBusyAction('wallet');
+    try {
+      const res = await apiFundCampaignWithWallet(campaign.id);
+      if (res.success) {
+        toast({
+          title: '🎉 Campaign Funded via Wallet!',
+          description: `Successfully deducted ₹${Number(campaign.budget).toLocaleString()} from your available wallet balance.`,
+        });
+        // Update campaign state
+        setCampaign(prev => prev ? { ...prev, status: 'active' as any } : null);
+        // Refresh wallet
+        if (wallet) {
+          setWallet(prev => prev ? { ...prev, available_balance: String(res.balance) } : null);
+        }
+      }
+    } catch (err: any) {
+      toast({
+        title: 'Wallet Funding Failed',
+        description: err?.message || 'Failed to complete wallet funding deduction.',
+        variant: 'destructive',
+      });
+    } finally {
+      setBusyAction(null);
+    }
+  };
+
+  // Helper to load Razorpay popup script
+  const loadRazorpayScript = () => {
+    return new Promise((resolve) => {
+      const script = document.createElement('script');
+      script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+      script.onload = () => resolve(true);
+      script.onerror = () => resolve(false);
+      document.body.appendChild(script);
+    });
+  };
+
+  const handleFundCampaign = async () => {
+    if (!campaign) return;
+    setBusyAction('razorpay');
+    try {
+      const isLoaded = await loadRazorpayScript();
+      if (!isLoaded) {
+        toast({
+          title: 'Gateway Error',
+          description: 'Failed to contact Razorpay servers. Check your internet connection.',
+          variant: 'destructive',
+        });
+        setBusyAction(null);
+        return;
+      }
+
+      // 1. Fetch Campaign Order Details
+      const res = await apiCreateCampaignOrder(campaign.id);
+
+      // 2. Open standard checkout popup modal
+      const options = {
+        key: res.keyId,
+        amount: res.amount,
+        currency: res.currency,
+        name: 'Crevio Escrow',
+        description: `Fund Budget for ${campaign.title}`,
+        order_id: res.orderId,
+        handler: async (response: any) => {
+          try {
+            setBusyAction('verify');
+            const verifyRes = await apiVerifyCampaignPayment(campaign.id, {
+              razorpay_payment_id: response.razorpay_payment_id,
+              razorpay_order_id: response.razorpay_order_id,
+              razorpay_signature: response.razorpay_signature,
+            });
+
+            if (verifyRes.success) {
+              toast({
+                title: '🎉 Campaign Funded & Activated!',
+                description: `Successfully escrowed ${new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(Number(campaign.budget))} and set campaign to Active.`,
+              });
+              
+              // Update state locally
+              setCampaign(prev => prev ? { ...prev, status: 'active' as any } : null);
+            }
+          } catch (err: any) {
+            toast({
+              title: 'Verification Failed',
+              description: err?.message || 'Secure payment signature verification rejected.',
+              variant: 'destructive',
+            });
+          } finally {
+            setBusyAction(null);
+          }
+        },
+        prefill: {
+          name: user?.name,
+          email: user?.email,
+        },
+        theme: {
+          color: '#6366f1',
+        },
+      };
+
+      const rzp = new (window as any).Razorpay(options);
+      rzp.open();
+    } catch (err: any) {
+      toast({
+        title: 'Funding Error',
+        description: err?.message || 'Failed to initialize campaign escrow deposit.',
+        variant: 'destructive',
+      });
+      setBusyAction(null);
+    }
+  };
 
   const fetchApplications = async () => {
     if (!id) return;
@@ -62,6 +184,15 @@ export default function CampaignDetail() {
         const res = await getCampaign(id);
         setCampaign(res.campaign);
         await fetchApplications();
+
+        if (role === 'brand' || role === 'admin') {
+          try {
+            const walletRes = await apiGetWallet();
+            setWallet(walletRes.wallet);
+          } catch (e) {
+            console.error("Failed to load wallet", e);
+          }
+        }
       } catch (error) {
         toast({
           title: "Error fetching campaign",
@@ -769,6 +900,66 @@ export default function CampaignDetail() {
           {/* Right Sidebar (Action Panel) (4 Cols) */}
           <div className="lg:col-span-4">
             <div className="sticky top-[100px] space-y-6">
+
+              {campaign.status === 'draft' && (role === 'brand' || role === 'admin') && (
+                <Card className="p-6 border-accent/20 bg-accent/5 backdrop-blur-md shadow-glow-accent space-y-4">
+                  <div className="flex items-center gap-2 text-accent">
+                    <Sparkles className="w-5 h-5 animate-pulse" />
+                    <span className="font-bold text-xs tracking-wider uppercase">Fund & Launch Campaign</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground leading-relaxed">
+                    This campaign is currently in <strong>Draft</strong>. To activate it and allow Creators to view, shortlist, and submit proposals, you must deposit and fund the campaign's prize budget (<strong>{new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(Number(campaign.budget))}</strong>) into Crevio's secure Escrow Vault.
+                  </p>
+                  
+                  <div className="text-xs bg-background/50 px-3 py-1.5 rounded-lg border border-border/50 text-foreground">
+                    Available Wallet Balance: <span className="font-bold text-emerald-400">₹{Number(wallet?.available_balance || 0).toLocaleString()}</span>
+                  </div>
+
+                  <div className="flex flex-col gap-2">
+                    {Number(wallet?.available_balance || 0) >= Number(campaign.budget) ? (
+                      <>
+                        <Button 
+                          className="w-full font-bold text-white bg-emerald-600 hover:bg-emerald-700 shadow-glow-emerald h-11 text-xs uppercase"
+                          disabled={busyAction !== null}
+                          onClick={handleFundCampaignWithWallet}
+                        >
+                          {busyAction === 'wallet' ? (
+                            <span className="flex items-center gap-1.5"><Loader2 className="w-4 h-4 animate-spin" /> Transferring...</span>
+                          ) : (
+                            <span>Pay with Wallet Balance</span>
+                          )}
+                        </Button>
+                        <button
+                          className="text-xs text-muted-foreground hover:text-foreground underline transition-colors text-center mt-1"
+                          onClick={handleFundCampaign}
+                          disabled={busyAction !== null}
+                        >
+                          Or, Pay with Razorpay Gateway
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <Button 
+                          className="w-full font-bold text-white bg-accent hover:bg-accent/80 shadow-glow-accent h-11 text-xs uppercase"
+                          disabled={busyAction !== null}
+                          onClick={handleFundCampaign}
+                        >
+                          {busyAction === 'razorpay' ? (
+                            <span className="flex items-center gap-1.5"><Loader2 className="w-4 h-4 animate-spin" /> Preparing Gateway...</span>
+                          ) : busyAction === 'verify' ? (
+                            <span className="flex items-center gap-1.5"><Loader2 className="w-4 h-4 animate-spin" /> Securing Signature...</span>
+                          ) : (
+                            <span>Fund Campaign with Razorpay</span>
+                          )}
+                        </Button>
+                        <p className="text-[10px] text-muted-foreground text-center">
+                          Top up your wallet in the <Link to="/wallet" className="underline text-accent">Wallet Hub</Link> to pay via balance.
+                        </p>
+                      </>
+                    )}
+                  </div>
+                </Card>
+              )}
               
               <Card className="p-6 border-border/50 shadow-xl shadow-black/5 bg-gradient-to-b from-card to-background">
                 <div className="space-y-6">

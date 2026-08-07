@@ -457,6 +457,287 @@ router.post('/withdraw', requireAuth, async (req, res) => {
   }
 });
 
+// 9. Create Campaign Funding Razorpay Order
+router.post('/campaigns/:id/create-order', requireAuth, requireRole('brand', 'admin'), async (req, res) => {
+  try {
+    const campaignId = req.params.id;
+    const campaignRes = await query('SELECT * FROM campaigns WHERE id = $1', [campaignId]);
+    const campaign = campaignRes.rows[0];
+
+    if (!campaign) {
+      return res.status(404).json({ error: 'Campaign not found' });
+    }
+
+    // Determine budget to fund
+    const budget = Number(campaign.budget || campaign.budget_max || campaign.budget_min || 10000);
+    const amountInPaise = Math.round(budget * 100);
+
+    const options = {
+      amount: amountInPaise,
+      currency: 'INR',
+      receipt: `cmp_${campaignId.substring(4, 14)}`,
+    };
+
+    const razorpay = getRazorpay();
+    if (!razorpay) {
+      throw new Error('Razorpay SDK is not configured');
+    }
+
+    const order = await razorpay.orders.create(options);
+
+    return res.json({ 
+      orderId: order.id, 
+      amount: amountInPaise, 
+      currency: 'INR',
+      keyId: process.env.RAZORPAY_KEY_ID || 'rzp_test_TMoehPXBFAhtVP'
+    });
+  } catch (error) {
+    console.error('Create campaign Razorpay order error:', error);
+    return res.status(500).json({ error: 'Failed to create campaign payment order' });
+  }
+});
+
+// 10. Cryptographically Verify Signature & Activate Campaign
+router.post('/campaigns/:id/verify-payment', requireAuth, requireRole('brand', 'admin'), async (req, res) => {
+  try {
+    const campaignId = req.params.id;
+    const { razorpay_payment_id, razorpay_order_id, razorpay_signature } = req.body;
+
+    const campaignRes = await query('SELECT * FROM campaigns WHERE id = $1', [campaignId]);
+    const campaign = campaignRes.rows[0];
+
+    if (!campaign) {
+      return res.status(404).json({ error: 'Campaign not found' });
+    }
+
+    if (!razorpay_payment_id || !razorpay_order_id || !razorpay_signature) {
+      return res.status(400).json({ error: 'Missing signature verification parameters' });
+    }
+
+    // Mathematical HMAC signature verification
+    const body = razorpay_order_id + '|' + razorpay_payment_id;
+    const expectedSignature = crypto
+      .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET || 'dbHk1ziwP4w3pubpfjVzrVMl')
+      .update(body.toString())
+      .digest('hex');
+
+    if (expectedSignature !== razorpay_signature) {
+      return res.status(400).json({ error: 'Secure campaign payment verification failed' });
+    }
+
+    // Transition campaign to ACTIVE
+    await query(
+      `UPDATE campaigns 
+       SET status = 'active', updated_at = NOW() 
+       WHERE id = $1`,
+      [campaignId]
+    );
+
+    const budget = Number(campaign.budget || campaign.budget_max || campaign.budget_min || 10000);
+
+    // Bookkeeping: Subtract from Brand available play balance and credit their pending escrow balance
+    let brandWalletRes = await query('SELECT * FROM user_wallets WHERE user_id = $1', [campaign.brand_id]);
+    if (!brandWalletRes.rows[0]) {
+      const walletId = createId('wal');
+      await query(
+        `INSERT INTO user_wallets (id, user_id, available_balance, pending_escrow_balance, currency) 
+         VALUES ($1, $2, 100000.00, 0.00, 'INR')`,
+        [walletId, campaign.brand_id]
+      );
+      brandWalletRes = await query('SELECT * FROM user_wallets WHERE user_id = $1', [campaign.brand_id]);
+    }
+
+    const brandWallet = brandWalletRes.rows[0];
+    await query(
+      `UPDATE user_wallets 
+       SET available_balance = available_balance - $2, 
+           pending_escrow_balance = pending_escrow_balance + $2, 
+           updated_at = NOW() 
+       WHERE id = $1`,
+      [brandWallet.id, budget]
+    );
+
+    // Record Ledger Debit Row
+    await query(
+      `INSERT INTO wallet_transactions (id, wallet_id, amount, txn_type, status, description)
+       VALUES ($1, $2, $3, 'escrow_debit', 'completed', $4)`,
+      [
+        createId('txn'), 
+        brandWallet.id, 
+        -budget, 
+        `Campaign Budget Secured: ${campaign.title} Published and Active`
+      ]
+    );
+
+    return res.json({ success: true, status: 'active' });
+  } catch (error) {
+    console.error('Verify campaign payment error:', error);
+    return res.status(500).json({ error: 'Failed to verify secure campaign budget' });
+  }
+});
+
+// 11. Fund Campaign Budget using Wallet Balance
+router.post('/campaigns/:id/fund-with-wallet', requireAuth, requireRole('brand', 'admin'), async (req, res) => {
+  try {
+    const campaignId = req.params.id;
+    const campaignRes = await query('SELECT * FROM campaigns WHERE id = $1', [campaignId]);
+    const campaign = campaignRes.rows[0];
+
+    if (!campaign) {
+      return res.status(404).json({ error: 'Campaign not found' });
+    }
+
+    if (campaign.status === 'active') {
+      return res.status(400).json({ error: 'Campaign is already active and funded' });
+    }
+
+    const budget = Number(campaign.budget || campaign.budget_max || campaign.budget_min || 10000);
+
+    // Fetch Wallet
+    let brandWalletRes = await query('SELECT * FROM user_wallets WHERE user_id = $1', [campaign.brand_id]);
+    if (!brandWalletRes.rows[0]) {
+      const walletId = createId('wal');
+      await query(
+        `INSERT INTO user_wallets (id, user_id, available_balance, pending_escrow_balance, currency) 
+         VALUES ($1, $2, 100000.00, 0.00, 'INR')`,
+        [walletId, campaign.brand_id]
+      );
+      brandWalletRes = await query('SELECT * FROM user_wallets WHERE user_id = $1', [campaign.brand_id]);
+    }
+
+    const brandWallet = brandWalletRes.rows[0];
+
+    if (Number(brandWallet.available_balance) < budget) {
+      return res.status(400).json({ error: `Insufficient wallet balance. You have ₹${Number(brandWallet.available_balance).toLocaleString()} but need ₹${Number(budget).toLocaleString()}. Please top-up first.` });
+    }
+
+    // Deduct available, add to pending escrow
+    await query(
+      `UPDATE user_wallets 
+       SET available_balance = available_balance - $2, 
+           pending_escrow_balance = pending_escrow_balance + $2, 
+           updated_at = NOW() 
+       WHERE id = $1`,
+      [brandWallet.id, budget]
+    );
+
+    // Transition campaign to ACTIVE
+    await query(
+      `UPDATE campaigns 
+       SET status = 'active', updated_at = NOW() 
+       WHERE id = $1`,
+      [campaignId]
+    );
+
+    // Record Ledger Debit Row
+    await query(
+      `INSERT INTO wallet_transactions (id, wallet_id, amount, txn_type, status, description)
+       VALUES ($1, $2, $3, 'escrow_debit', 'completed', $4)`,
+      [
+        createId('txn'), 
+        brandWallet.id, 
+        -budget, 
+        `Campaign Budget Secured via Wallet: ${campaign.title} Published and Active`
+      ]
+    );
+
+    return res.json({ success: true, status: 'active', balance: Number(brandWallet.available_balance) - budget });
+  } catch (error) {
+    console.error('Wallet campaign funding error:', error);
+    return res.status(500).json({ error: 'Failed to fund campaign budget from available wallet balance' });
+  }
+});
+
+// 12. Fund Contract Escrow using Wallet Balance
+router.post('/contracts/:id/fund-with-wallet', requireAuth, requireRole('brand', 'admin'), async (req, res) => {
+  try {
+    const contractId = req.params.id;
+    const contractRes = await query('SELECT * FROM contracts WHERE id = $1', [contractId]);
+    const contract = contractRes.rows[0];
+
+    if (!contract) {
+      return res.status(404).json({ error: 'Contract not found' });
+    }
+
+    if (contract.status !== 'accepted') {
+      return res.status(400).json({ error: 'Contract must be accepted by creator before funding' });
+    }
+
+    const cost = Number(contract.payment_amount);
+
+    // Fetch Wallet
+    let brandWalletRes = await query('SELECT * FROM user_wallets WHERE user_id = $1', [contract.brand_id]);
+    if (!brandWalletRes.rows[0]) {
+      const walletId = createId('wal');
+      await query(
+        `INSERT INTO user_wallets (id, user_id, available_balance, pending_escrow_balance, currency) 
+         VALUES ($1, $2, 100000.00, 0.00, 'INR')`,
+        [walletId, contract.brand_id]
+      );
+      brandWalletRes = await query('SELECT * FROM user_wallets WHERE user_id = $1', [contract.brand_id]);
+    }
+
+    const brandWallet = brandWalletRes.rows[0];
+
+    if (Number(brandWallet.available_balance) < cost) {
+      return res.status(400).json({ error: `Insufficient wallet balance. You have ₹${Number(brandWallet.available_balance).toLocaleString()} but need ₹${Number(cost).toLocaleString()}. Please top-up or fund via Razorpay.` });
+    }
+
+    // Save transition state into escrow_holdings table
+    const escId = createId('esc');
+    await query(
+      `INSERT INTO escrow_holdings (id, contract_id, campaign_id, brand_id, creator_id, amount, status)
+       VALUES ($1, $2, $3, $4, $5, $6, 'held')
+       ON CONFLICT (contract_id) 
+       DO UPDATE SET status = 'held', updated_at = NOW()`,
+      [escId, contractId, contract.campaign_id, contract.brand_id, contract.creator_id, contract.payment_amount]
+    );
+
+    // Deduct available, add to pending escrow
+    await query(
+      `UPDATE user_wallets 
+       SET available_balance = available_balance - $2, 
+           pending_escrow_balance = pending_escrow_balance + $2, 
+           updated_at = NOW() 
+       WHERE id = $1`,
+      [brandWallet.id, cost]
+    );
+
+    // Transition contract to LOCKED
+    await query(
+      `UPDATE contracts 
+       SET status = 'locked', locked_at = NOW(), updated_at = NOW() 
+       WHERE id = $1`,
+      [contractId]
+    );
+
+    // Record Ledger Debit Row
+    await query(
+      `INSERT INTO wallet_transactions (id, wallet_id, amount, txn_type, status, description, reference_escrow_id)
+       VALUES ($1, $2, $3, 'escrow_debit', 'completed', $4, $5)`,
+      [
+        createId('txn'), 
+        brandWallet.id, 
+        -cost, 
+        `Escrow Locked via Wallet Balance: Contract ${contractId} Campaign Budget Secured`,
+        escId
+      ]
+    );
+
+    // Log a contract event
+    await query(
+      `INSERT INTO contract_events (id, contract_id, actor_user_id, event_type, payload)
+       VALUES ($1, $2, $3, 'contract_escrow_funded', $4::jsonb)`,
+      [createId('evt'), contractId, req.user.userId, JSON.stringify({ source: 'wallet_balance', amount: cost })]
+    );
+
+    return res.json({ success: true, status: 'locked', balance: Number(brandWallet.available_balance) - cost });
+  } catch (error) {
+    console.error('Wallet contract funding error:', error);
+    return res.status(500).json({ error: 'Failed to fund contract escrow from available wallet balance' });
+  }
+});
+
 // 5. Get List of all global escrows for Admin Panel
 router.get('/escrows', requireAuth, requireRole('admin'), async (req, res) => {
   try {

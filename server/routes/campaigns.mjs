@@ -612,7 +612,7 @@ router.post('/', requireAuth, requireRole('brand', 'admin'), async (req, res) =>
       id, brand_id, title, goal, target_audience, description, deliverables_summary,
       timeline_summary, platform, budget, budget_min, budget_max, content_rights, deadline, status, cover_image_url, highlight_color
     )
-    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, 'active', $15, $16)`,
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, 'draft', $15, $16)`,
     [
       campaignId,
       req.user.userId,
