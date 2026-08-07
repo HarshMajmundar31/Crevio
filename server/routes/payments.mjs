@@ -307,6 +307,131 @@ router.post('/contracts/:id/simulate-release', requireAuth, requireRole('admin')
   }
 });
 
+// 6. Create Razorpay Deposit Order
+router.post('/deposit/create-order', requireAuth, async (req, res) => {
+  try {
+    const { amount } = req.body;
+    if (!amount || isNaN(amount) || Number(amount) <= 0) {
+      return res.status(400).json({ error: 'Please specify a valid deposit amount' });
+    }
+
+    const amountInPaise = Math.round(Number(amount) * 100);
+    const options = {
+      amount: amountInPaise,
+      currency: 'INR',
+      receipt: `dep_${createId('rcpt').substring(4, 14)}`,
+    };
+
+    const order = await razorpay.orders.create(options);
+
+    return res.json({
+      orderId: order.id,
+      amount: amountInPaise,
+      currency: 'INR',
+      keyId: process.env.RAZORPAY_KEY_ID || 'rzp_test_TMoehPXBFAhtVP'
+    });
+  } catch (error) {
+    console.error('Create deposit order error:', error);
+    return res.status(500).json({ error: 'Failed to create deposit payment order' });
+  }
+});
+
+// 7. Verify Deposit Payment and Credit Wallet
+router.post('/deposit/verify', requireAuth, async (req, res) => {
+  try {
+    const { razorpay_payment_id, razorpay_order_id, razorpay_signature, amount } = req.body;
+
+    if (!razorpay_payment_id || !razorpay_order_id || !razorpay_signature || !amount) {
+      return res.status(400).json({ error: 'Missing payment confirmation parameters' });
+    }
+
+    // Verify Signature
+    const body = razorpay_order_id + '|' + razorpay_payment_id;
+    const expectedSignature = crypto
+      .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET || 'dbHk1ziwP4w3pubpfjVzrVMl')
+      .update(body.toString())
+      .digest('hex');
+
+    if (expectedSignature !== razorpay_signature) {
+      return res.status(400).json({ error: 'Deposit signature verification failed' });
+    }
+
+    // Credit User Wallet
+    let walletRes = await query('SELECT * FROM user_wallets WHERE user_id = $1', [req.user.userId]);
+    if (!walletRes.rows[0]) {
+      const walletId = createId('wal');
+      await query(
+        `INSERT INTO user_wallets (id, user_id, available_balance, pending_escrow_balance, currency) 
+         VALUES ($1, $2, 0.00, 0.00, 'INR')`,
+        [walletId, req.user.userId]
+      );
+      walletRes = await query('SELECT * FROM user_wallets WHERE user_id = $1', [req.user.userId]);
+    }
+
+    const wallet = walletRes.rows[0];
+    const depAmt = Number(amount);
+
+    await query(
+      `UPDATE user_wallets 
+       SET available_balance = available_balance + $2, updated_at = NOW() 
+       WHERE id = $1`,
+      [wallet.id, depAmt]
+    );
+
+    // Log transactional credit ledger
+    await query(
+      `INSERT INTO wallet_transactions (id, wallet_id, amount, txn_type, status, description) 
+       VALUES ($1, $2, $3, 'deposit', 'completed', $4)`,
+      [createId('txn'), wallet.id, depAmt, `Secured Deposit via Razorpay Sandbox (ID: ${razorpay_payment_id})`]
+    );
+
+    return res.json({ success: true, balance: Number(wallet.available_balance) + depAmt });
+  } catch (error) {
+    console.error('Verify deposit error:', error);
+    return res.status(500).json({ error: 'Failed to complete credit deposit' });
+  }
+});
+
+// 8. Execute Payout Withdrawal (Simulated)
+router.post('/withdraw', requireAuth, async (req, res) => {
+  try {
+    const { amount, paymentMethod, paymentDetails } = req.body;
+    if (!amount || isNaN(amount) || Number(amount) <= 0) {
+      return res.status(400).json({ error: 'Please specify a valid withdrawal amount' });
+    }
+
+    const withAmt = Number(amount);
+
+    let walletRes = await query('SELECT * FROM user_wallets WHERE user_id = $1', [req.user.userId]);
+    const wallet = walletRes.rows[0];
+
+    if (!wallet || Number(wallet.available_balance) < withAmt) {
+      return res.status(400).json({ error: 'Insufficient wallet balance for this withdrawal' });
+    }
+
+    // Debit wallet balance
+    await query(
+      `UPDATE user_wallets 
+       SET available_balance = available_balance - $2, updated_at = NOW() 
+       WHERE id = $1`,
+      [wallet.id, withAmt]
+    );
+
+    // Record ledger debit withdrawal
+    const methodDesc = paymentMethod === 'upi' ? `UPI transfer to ${paymentDetails}` : `Bank Transfer (Account Number: ${paymentDetails})`;
+    await query(
+      `INSERT INTO wallet_transactions (id, wallet_id, amount, txn_type, status, description) 
+       VALUES ($1, $2, $3, 'withdrawal', 'completed', $4)`,
+      [createId('txn'), wallet.id, -withAmt, `Withdrawn payout: ${methodDesc}`]
+    );
+
+    return res.json({ success: true, balance: Number(wallet.available_balance) - withAmt });
+  } catch (error) {
+    console.error('Withdraw payout error:', error);
+    return res.status(500).json({ error: 'Failed to finalize payout cashout' });
+  }
+});
+
 // 5. Get List of all global escrows for Admin Panel
 router.get('/escrows', requireAuth, requireRole('admin'), async (req, res) => {
   try {
