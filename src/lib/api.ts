@@ -59,7 +59,8 @@ async function request<T>(path: string, method: HttpMethod, body?: BodyInit | ob
 
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) {
-    throw new Error(payload?.error || `Request failed: ${response.status}`);
+    const errorMsg = payload?.details ? `${payload?.error || 'Error'}: ${payload.details}` : (payload?.error || `Request failed: ${response.status}`);
+    throw new Error(errorMsg);
   }
 
   return payload as T;

@@ -163,46 +163,82 @@ router.post('/onboard', requireClerkAuth, async (req, res) => {
       });
     }
 
+    // 1. Check if user already exists by ID
     const existingResult = await query(
-      'SELECT id, full_name, email, role, onboarding_step, linkedin_linked, linkedin_data, onboarding_draft FROM users WHERE id = $1 AND is_active = TRUE',
+      'SELECT id, full_name, email, role, onboarding_step, linkedin_linked, linkedin_data, onboarding_draft FROM users WHERE id = $1',
       [userId]
     );
 
     if (existingResult.rows[0]) {
       const user = existingResult.rows[0];
-      const needsOnboarding = user.onboarding_step === null || user.onboarding_step > 0;
-        
-      const response = { 
-        user: toApiUser(user),
-        needsOnboarding: needsOnboarding
-      };
-      console.log(`[Auth/onboard] Existing User ${userId} (${user.role}), step=${user.onboarding_step}, needsOnboarding: ${response.needsOnboarding}`);
-      return res.json(response);
+      const updated = await query(
+        `UPDATE users
+         SET role = $2,
+             full_name = COALESCE($3, full_name),
+             email = COALESCE($4, email),
+             is_active = TRUE,
+             onboarding_step = COALESCE(onboarding_step, 1),
+             updated_at = NOW()
+         WHERE id = $1
+         RETURNING id, full_name, email, role, onboarding_step, linkedin_linked, linkedin_data, onboarding_draft`,
+        [userId, role, name, email]
+      );
+      const updatedUser = updated.rows[0] || user;
+      const needsOnboarding = updatedUser.onboarding_step === null || updatedUser.onboarding_step > 0;
+      return res.json({
+        user: toApiUser(updatedUser),
+        needsOnboarding: needsOnboarding,
+      });
     }
 
-    const inserted = await query(
-      `INSERT INTO users (id, full_name, email, role, onboarding_step, is_active)
-       VALUES ($1, $2, $3, $4, 1, TRUE)
-       RETURNING id, full_name, email, role, onboarding_step, linkedin_linked, linkedin_data, onboarding_draft`,
-      [userId, name, email, role]
-    );
+    // 2. Insert with ON CONFLICT DO UPDATE
+    let insertedUser = null;
+    try {
+      const inserted = await query(
+        `INSERT INTO users (id, full_name, email, role, onboarding_step, is_active)
+         VALUES ($1, $2, $3, $4, 1, TRUE)
+         ON CONFLICT (id) DO UPDATE SET
+           role = EXCLUDED.role,
+           full_name = COALESCE(EXCLUDED.full_name, users.full_name),
+           email = EXCLUDED.email,
+           is_active = TRUE,
+           updated_at = NOW()
+         RETURNING id, full_name, email, role, onboarding_step, linkedin_linked, linkedin_data, onboarding_draft`,
+        [userId, name, email, role]
+      );
+      insertedUser = inserted.rows[0];
+    } catch (insertErr) {
+      // If email unique constraint fails because email belongs to another ID
+      if (insertErr?.code === '23505' && insertErr?.constraint === 'users_email_key') {
+        const altEmail = `clerk-${userId}@acems.local`;
+        const insertedAlt = await query(
+          `INSERT INTO users (id, full_name, email, role, onboarding_step, is_active)
+           VALUES ($1, $2, $3, $4, 1, TRUE)
+           ON CONFLICT (id) DO UPDATE SET
+             role = EXCLUDED.role,
+             is_active = TRUE,
+             updated_at = NOW()
+           RETURNING id, full_name, email, role, onboarding_step, linkedin_linked, linkedin_data, onboarding_draft`,
+          [userId, name, altEmail, role]
+        );
+        insertedUser = insertedAlt.rows[0];
+      } else {
+        throw insertErr;
+      }
+    }
 
-    const insertedUser = inserted.rows[0];
     const needsOnboarding = insertedUser.onboarding_step === null || insertedUser.onboarding_step > 0;
 
-    const response = { 
+    return res.status(201).json({
       user: toApiUser(insertedUser),
-      needsOnboarding: needsOnboarding
-    };
-
-    console.log(`[Auth/onboard] New User ${userId} (${role}), needsOnboarding: ${response.needsOnboarding}`);
-
-    return res.status(201).json(response);
+      needsOnboarding: needsOnboarding,
+    });
   } catch (error) {
     console.error('[Auth/onboard Error]', error);
     return res.status(500).json({
       error: 'Auth onboard request failed',
       details: error?.message || String(error),
+      code: error?.code,
     });
   }
 });
