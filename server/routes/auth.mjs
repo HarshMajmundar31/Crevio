@@ -68,6 +68,26 @@ router.get('/me', requireClerkAuth, async (req, res) => {
 
     let user = userResult.rows[0] || null;
 
+    // If user not found by ID, check if user exists by Email and re-link to new Clerk userId
+    if (!user && email) {
+      const userByEmail = await query(
+        'SELECT id, full_name, email, role, onboarding_step, linkedin_linked, linkedin_data, onboarding_draft FROM users WHERE email = $1 AND is_active = TRUE',
+        [email]
+      );
+      if (userByEmail.rows[0]) {
+        const remapped = await query(
+          `UPDATE users
+           SET id = $1,
+               full_name = COALESCE($2, full_name),
+               updated_at = NOW()
+           WHERE email = $3
+           RETURNING id, full_name, email, role, onboarding_step, linkedin_linked, linkedin_data, onboarding_draft`,
+          [userId, name, email]
+        );
+        user = remapped.rows[0] || userByEmail.rows[0];
+      }
+    }
+
     if (user) {
       const shouldUpdateName =
         name &&
@@ -164,13 +184,13 @@ router.post('/onboard', requireClerkAuth, async (req, res) => {
     }
 
     // 1. Check if user already exists by ID
-    const existingResult = await query(
+    const existingById = await query(
       'SELECT id, full_name, email, role, onboarding_step, linkedin_linked, linkedin_data, onboarding_draft FROM users WHERE id = $1',
       [userId]
     );
 
-    if (existingResult.rows[0]) {
-      const user = existingResult.rows[0];
+    if (existingById.rows[0]) {
+      const user = existingById.rows[0];
       const updated = await query(
         `UPDATE users
          SET role = $2,
@@ -184,32 +204,53 @@ router.post('/onboard', requireClerkAuth, async (req, res) => {
         [userId, role, name, email]
       );
       const updatedUser = updated.rows[0] || user;
-      const needsOnboarding = updatedUser.onboarding_step === null || updatedUser.onboarding_step > 0;
       return res.json({
         user: toApiUser(updatedUser),
-        needsOnboarding: needsOnboarding,
+        needsOnboarding: updatedUser.onboarding_step === null || updatedUser.onboarding_step > 0,
       });
     }
 
-    // 2. Insert with ON CONFLICT DO UPDATE
+    // 2. Check if user already exists by Email (e.g. from seed or old Clerk user)
+    if (email) {
+      const existingByEmail = await query(
+        'SELECT id, full_name, email, role, onboarding_step, linkedin_linked, linkedin_data, onboarding_draft FROM users WHERE email = $1',
+        [email]
+      );
+
+      if (existingByEmail.rows[0]) {
+        const user = existingByEmail.rows[0];
+        const remapped = await query(
+          `UPDATE users
+           SET id = $1,
+               role = $2,
+               full_name = COALESCE($3, full_name),
+               is_active = TRUE,
+               onboarding_step = COALESCE(onboarding_step, 1),
+               updated_at = NOW()
+           WHERE email = $4
+           RETURNING id, full_name, email, role, onboarding_step, linkedin_linked, linkedin_data, onboarding_draft`,
+          [userId, role, name, email]
+        );
+        const remappedUser = remapped.rows[0] || user;
+        return res.json({
+          user: toApiUser(remappedUser),
+          needsOnboarding: remappedUser.onboarding_step === null || remappedUser.onboarding_step > 0,
+        });
+      }
+    }
+
+    // 3. Insert brand new user record
     let insertedUser = null;
     try {
       const inserted = await query(
         `INSERT INTO users (id, full_name, email, role, onboarding_step, is_active)
          VALUES ($1, $2, $3, $4, 1, TRUE)
-         ON CONFLICT (id) DO UPDATE SET
-           role = EXCLUDED.role,
-           full_name = COALESCE(EXCLUDED.full_name, users.full_name),
-           email = EXCLUDED.email,
-           is_active = TRUE,
-           updated_at = NOW()
          RETURNING id, full_name, email, role, onboarding_step, linkedin_linked, linkedin_data, onboarding_draft`,
         [userId, name, email, role]
       );
       insertedUser = inserted.rows[0];
     } catch (insertErr) {
-      // If email unique constraint fails because email belongs to another ID
-      if (insertErr?.code === '23505' && insertErr?.constraint === 'users_email_key') {
+      if (insertErr?.code === '23505') {
         const altEmail = `clerk-${userId}@acems.local`;
         const insertedAlt = await query(
           `INSERT INTO users (id, full_name, email, role, onboarding_step, is_active)
@@ -227,11 +268,9 @@ router.post('/onboard', requireClerkAuth, async (req, res) => {
       }
     }
 
-    const needsOnboarding = insertedUser.onboarding_step === null || insertedUser.onboarding_step > 0;
-
     return res.status(201).json({
       user: toApiUser(insertedUser),
-      needsOnboarding: needsOnboarding,
+      needsOnboarding: insertedUser.onboarding_step === null || insertedUser.onboarding_step > 0,
     });
   } catch (error) {
     console.error('[Auth/onboard Error]', error);
