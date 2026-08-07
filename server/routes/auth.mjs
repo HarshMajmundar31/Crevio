@@ -58,137 +58,153 @@ async function resolveAuthContextProfile(authContext) {
 }
 
 router.get('/me', requireClerkAuth, async (req, res) => {
-  const { userId, email, name } = await resolveAuthContextProfile(req.authContext);
+  try {
+    const { userId, email, name } = await resolveAuthContextProfile(req.authContext);
 
-  let userResult = await query(
-    'SELECT id, full_name, email, role, onboarding_step, linkedin_linked, linkedin_data, onboarding_draft FROM users WHERE id = $1 AND is_active = TRUE',
-    [userId]
-  );
-
-  let user = userResult.rows[0] || null;
-
-  if (user) {
-    const shouldUpdateName =
-      name &&
-      name !== 'ACEMS User' &&
-      (!user.full_name || user.full_name === 'ACEMS User' || user.full_name !== name);
-
-    const shouldUpdateEmail = email && user.email !== email;
-
-    if (shouldUpdateName || shouldUpdateEmail) {
-      const updated = await query(
-        `UPDATE users
-         SET full_name = COALESCE($2, full_name),
-             email = COALESCE($3, email),
-             updated_at = NOW()
-         WHERE id = $1
-         RETURNING id, full_name, email, role, onboarding_step, linkedin_linked, linkedin_data, onboarding_draft`,
-        [userId, shouldUpdateName ? name : null, shouldUpdateEmail ? email : null]
-      );
-
-      user = updated.rows[0] || user;
-    }
-  }
-
-  // Bootstrap admin users from a controlled allowlist.
-  if (!user && email) {
-    const adminEmails = new Set(
-      String(process.env.CLERK_ADMIN_EMAILS || '')
-        .split(',')
-        .map((value) => value.trim().toLowerCase())
-        .filter(Boolean)
+    let userResult = await query(
+      'SELECT id, full_name, email, role, onboarding_step, linkedin_linked, linkedin_data, onboarding_draft FROM users WHERE id = $1 AND is_active = TRUE',
+      [userId]
     );
 
-    if (adminEmails.has(email.toLowerCase())) {
-      const inserted = await query(
-        `INSERT INTO users (id, full_name, email, role, is_active)
-         VALUES ($1, $2, $3, 'admin', TRUE)
-         ON CONFLICT (id) DO UPDATE SET
-           full_name = EXCLUDED.full_name,
-           email = EXCLUDED.email,
-           role = 'admin',
-           is_active = TRUE,
-           updated_at = NOW()
-         RETURNING id, full_name, email, role, onboarding_step`,
-        [userId, name, email]
+    let user = userResult.rows[0] || null;
+
+    if (user) {
+      const shouldUpdateName =
+        name &&
+        name !== 'ACEMS User' &&
+        (!user.full_name || user.full_name === 'ACEMS User' || user.full_name !== name);
+
+      const shouldUpdateEmail = email && user.email !== email;
+
+      if (shouldUpdateName || shouldUpdateEmail) {
+        const updated = await query(
+          `UPDATE users
+           SET full_name = COALESCE($2, full_name),
+               email = COALESCE($3, email),
+               updated_at = NOW()
+           WHERE id = $1
+           RETURNING id, full_name, email, role, onboarding_step, linkedin_linked, linkedin_data, onboarding_draft`,
+          [userId, shouldUpdateName ? name : null, shouldUpdateEmail ? email : null]
+        );
+
+        user = updated.rows[0] || user;
+      }
+    }
+
+    // Bootstrap admin users from a controlled allowlist.
+    if (!user && email) {
+      const adminEmails = new Set(
+        String(process.env.CLERK_ADMIN_EMAILS || '')
+          .split(',')
+          .map((value) => value.trim().toLowerCase())
+          .filter(Boolean)
       );
 
-      user = inserted.rows[0] || null;
-    }
-  }
+      if (adminEmails.has(email.toLowerCase())) {
+        const inserted = await query(
+          `INSERT INTO users (id, full_name, email, role, is_active)
+           VALUES ($1, $2, $3, 'admin', TRUE)
+           ON CONFLICT (id) DO UPDATE SET
+             full_name = EXCLUDED.full_name,
+             email = EXCLUDED.email,
+             role = 'admin',
+             is_active = TRUE,
+             updated_at = NOW()
+           RETURNING id, full_name, email, role, onboarding_step`,
+          [userId, name, email]
+        );
 
-  if (!user) {
-    return res.json({
-      user: null,
-      needsOnboarding: true,
-      profile: {
-        id: userId,
-        email,
-        name,
-      },
+        user = inserted.rows[0] || null;
+      }
+    }
+
+    if (!user) {
+      return res.json({
+        user: null,
+        needsOnboarding: true,
+        profile: {
+          id: userId,
+          email,
+          name,
+        },
+      });
+    }
+
+    const needsOnboarding = user.onboarding_step === null || user.onboarding_step > 0;
+
+    console.log(`[Auth/me] DEBUG: role=${user.role}, step=${user.onboarding_step}, stepType=${typeof user.onboarding_step}, needsOnboarding=${needsOnboarding}`);
+
+    const response = {
+      user: toApiUser(user),
+      needsOnboarding: needsOnboarding,
+    };
+
+    return res.json(response);
+  } catch (error) {
+    console.error('[Auth/me Error]', error);
+    return res.status(500).json({
+      error: 'Auth me request failed',
+      details: error?.message || String(error),
     });
   }
-
-  const needsOnboarding = user.onboarding_step === null || user.onboarding_step > 0;
-
-  console.log(`[Auth/me] DEBUG: role=${user.role}, step=${user.onboarding_step}, stepType=${typeof user.onboarding_step}, needsOnboarding=${needsOnboarding}`);
-
-  const response = {
-    user: toApiUser(user),
-    needsOnboarding: needsOnboarding,
-  };
-
-  return res.json(response);
 });
 
 router.post('/onboard', requireClerkAuth, async (req, res) => {
-  const roleFromBody = req.body?.role;
-  const roleFromQuery = typeof req.query?.role === 'string' ? req.query.role : null;
-  const role = roleFromBody || roleFromQuery;
-  const { userId, email, name } = await resolveAuthContextProfile(req.authContext);
+  try {
+    const roleFromBody = req.body?.role;
+    const roleFromQuery = typeof req.query?.role === 'string' ? req.query.role : null;
+    const role = roleFromBody || roleFromQuery;
+    const { userId, email, name } = await resolveAuthContextProfile(req.authContext);
 
-  if (!['brand', 'creator'].includes(role)) {
-    return res.status(400).json({
-      error: 'role must be either brand or creator',
-      receivedRole: role ?? null,
-    });
-  }
+    if (!['brand', 'creator'].includes(role)) {
+      return res.status(400).json({
+        error: 'role must be either brand or creator',
+        receivedRole: role ?? null,
+      });
+    }
 
-  const existingResult = await query(
-    'SELECT id, full_name, email, role, onboarding_step, linkedin_linked, linkedin_data, onboarding_draft FROM users WHERE id = $1 AND is_active = TRUE',
-    [userId]
-  );
+    const existingResult = await query(
+      'SELECT id, full_name, email, role, onboarding_step, linkedin_linked, linkedin_data, onboarding_draft FROM users WHERE id = $1 AND is_active = TRUE',
+      [userId]
+    );
 
-  if (existingResult.rows[0]) {
-    const user = existingResult.rows[0];
-    const needsOnboarding = user.onboarding_step === null || user.onboarding_step > 0;
-      
+    if (existingResult.rows[0]) {
+      const user = existingResult.rows[0];
+      const needsOnboarding = user.onboarding_step === null || user.onboarding_step > 0;
+        
+      const response = { 
+        user: toApiUser(user),
+        needsOnboarding: needsOnboarding
+      };
+      console.log(`[Auth/onboard] Existing User ${userId} (${user.role}), step=${user.onboarding_step}, needsOnboarding: ${response.needsOnboarding}`);
+      return res.json(response);
+    }
+
+    const inserted = await query(
+      `INSERT INTO users (id, full_name, email, role, onboarding_step, is_active)
+       VALUES ($1, $2, $3, $4, 1, TRUE)
+       RETURNING id, full_name, email, role, onboarding_step, linkedin_linked, linkedin_data, onboarding_draft`,
+      [userId, name, email, role]
+    );
+
+    const insertedUser = inserted.rows[0];
+    const needsOnboarding = insertedUser.onboarding_step === null || insertedUser.onboarding_step > 0;
+
     const response = { 
-      user: toApiUser(user),
+      user: toApiUser(insertedUser),
       needsOnboarding: needsOnboarding
     };
-    console.log(`[Auth/onboard] Existing User ${userId} (${user.role}), step=${user.onboarding_step}, needsOnboarding: ${response.needsOnboarding}`);
-    return res.json(response);
+
+    console.log(`[Auth/onboard] New User ${userId} (${role}), needsOnboarding: ${response.needsOnboarding}`);
+
+    return res.status(201).json(response);
+  } catch (error) {
+    console.error('[Auth/onboard Error]', error);
+    return res.status(500).json({
+      error: 'Auth onboard request failed',
+      details: error?.message || String(error),
+    });
   }
-
-  const inserted = await query(
-    `INSERT INTO users (id, full_name, email, role, onboarding_step, is_active)
-     VALUES ($1, $2, $3, $4, 1, TRUE)
-     RETURNING id, full_name, email, role, onboarding_step, linkedin_linked, linkedin_data, onboarding_draft`,
-    [userId, name, email, role]
-  );
-
-  const insertedUser = inserted.rows[0];
-  const needsOnboarding = insertedUser.onboarding_step === null || insertedUser.onboarding_step > 0;
-
-  const response = { 
-    user: toApiUser(insertedUser),
-    needsOnboarding: needsOnboarding
-  };
-
-  console.log(`[Auth/onboard] New User ${userId} (${role}), needsOnboarding: ${response.needsOnboarding}`);
-
-  return res.status(201).json(response);
 });
 router.post('/linkedin/verify', requireClerkAuth, async (req, res) => {
   const userId = req.authContext.userId;

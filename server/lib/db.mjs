@@ -7,18 +7,30 @@ const isLocalhost = Boolean(
     (process.env.DATABASE_URL.includes('localhost') || process.env.DATABASE_URL.includes('127.0.0.1'))
 );
 
-export const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: isLocalhost
-    ? false
-    : {
-        rejectUnauthorized: false,
-      },
-});
+let poolInstance = null;
+
+function getPool() {
+  if (!poolInstance) {
+    const connectionString = process.env.DATABASE_URL;
+    if (!connectionString) {
+      throw new Error('DATABASE_URL is not configured in Environment Variables.');
+    }
+    poolInstance = new Pool({
+      connectionString,
+      ssl: isLocalhost
+        ? false
+        : {
+            rejectUnauthorized: false,
+          },
+      max: 10,
+      idleTimeoutMillis: 30000,
+      connectionTimeoutMillis: 10000,
+    });
+  }
+  return poolInstance;
+}
 
 export async function query(text, params = []) {
-  if (!process.env.DATABASE_URL) {
-    throw new Error('DATABASE_URL is not configured in Vercel Environment Variables.');
-  }
+  const pool = getPool();
   return pool.query(text, params);
 }
