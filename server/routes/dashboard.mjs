@@ -19,6 +19,8 @@ router.get('/summary', async (req, res, next) => {
     let awaitingAcceptanceQuery = { rows: [{ count: '0' }] };
     let signedPendingLockQuery = { rows: [{ count: '0', ready_escrow: '0' }] };
     let riskBreachesQuery = { rows: [{ count: '0' }] };
+    let pendingReleaseQuery = { rows: [{ count: '0', pending_release: '0' }] };
+    let slaBreachedQuery = { rows: [{ count: '0' }] };
 
     try {
       totalExecutingQuery = await query(
@@ -44,6 +46,23 @@ router.get('/summary', async (req, res, next) => {
          FROM contracts 
          WHERE status IN ('disputed', 'FAILED') ${filter}`, params
       );
+
+      pendingReleaseQuery = await query(
+        `SELECT COALESCE(SUM(payment_amount), 0) as pending_release
+         FROM contracts
+         WHERE status IN ('locked', 'executed', 'EXECUTING')
+           AND contract_deadline IS NOT NULL
+           AND contract_deadline <= NOW() + INTERVAL '48 hours'
+           ${filter}`, params
+      );
+
+      slaBreachedQuery = await query(
+        `SELECT COUNT(*) as count
+         FROM contracts
+         WHERE status IN ('pending', 'draft', 'PENDING_ACCEPTANCE', 'AWAITING_CREATOR_REVIEW')
+           AND created_at <= NOW() - INTERVAL '72 hours'
+           ${filter}`, params
+      );
     } catch (dbError) {
       console.warn('DB query fallback to default telemetry values:', dbError.message);
     }
@@ -54,28 +73,30 @@ router.get('/summary', async (req, res, next) => {
     const signedPendingLock = parseInt(signedPendingLockQuery.rows[0]?.count || '0', 10);
     const readyEscrow = parseFloat(signedPendingLockQuery.rows[0]?.ready_escrow || '0');
     const breachCount = parseInt(riskBreachesQuery.rows[0]?.count || '0', 10);
+    const pendingRelease48h = parseFloat(pendingReleaseQuery.rows[0]?.pending_release || '0');
+    const slaBreached72h = parseInt(slaBreachedQuery.rows[0]?.count || '0', 10);
 
     res.json({
       success: true,
       data: {
         executingContracts: {
           count: executingCount,
-          trend: '+12% vs last month',
-          sparkline: [120, 128, 134, 139, executingCount]
+          trend: executingCount > 0 ? `${executingCount} Active` : '0 Active',
+          sparkline: [0, 0, 0, 0, executingCount]
         },
         escrowCapital: {
           totalLocked: escrowLocked,
-          pendingRelease48h: 320000,
+          pendingRelease48h: pendingRelease48h,
           currency: 'USD'
         },
         complianceHealth: {
-          indexScore: 98.4,
+          indexScore: (executingCount > 0 || awaitingAcceptance > 0 || signedPendingLock > 0) ? 100.0 : 0.0,
           activeBreaches: breachCount,
           status: breachCount > 0 ? 'ATTENTION_NEEDED' : 'OPTIMAL'
         },
         awaitingCreatorSignedUpload: {
           count: awaitingAcceptance,
-          slaBreached72h: 3
+          slaBreached72h: slaBreached72h
         },
         signedPendingLock: {
           count: signedPendingLock,

@@ -72,7 +72,7 @@ export default function Dashboard() {
   const [isLoading, setIsLoading] = useState(true);
 
   // Interactive Modal States
-  const [inspectProofModal, setInspectProofModal] = useState<{ open: boolean; contractNum: string } | null>(null);
+  const [inspectProofModal, setInspectProofModal] = useState<{ open: boolean; contractNum: string; contract?: ApiContract } | null>(null);
   const [fundEscrowModal, setFundEscrowModal] = useState<{ open: boolean; contractNum: string; amount: number } | null>(null);
   const [inviteModal, setInviteModal] = useState<{ open: boolean; contractNum: string; link: string } | null>(null);
 
@@ -123,12 +123,15 @@ export default function Dashboard() {
 
   // REAL ACTION HANDLERS
   const handleActionClick = (action: string, alertId: string, contractNum: string) => {
+    const contract = contracts.find(c => c.id === contractNum || `#ACEE-${c.id.substring(0,6)}` === contractNum);
+
     if (action === 'INSPECT_PROOF' || action === 'VIEW_PDF') {
-      setInspectProofModal({ open: true, contractNum });
+      setInspectProofModal({ open: true, contractNum, contract });
     } else if (action === 'FUND_ESCROW') {
-      setFundEscrowModal({ open: true, contractNum, amount: 15000 });
+      const amount = contract ? Number(contract.payment_amount || 0) : 0;
+      setFundEscrowModal({ open: true, contractNum, amount });
     } else if (action === 'DISPATCH_INVITE' || action === 'RUN_AI_MATCH') {
-      const link = `https://app.crevio.io/invite/cr_${Math.floor(1000 + Math.random() * 9000)}_x8b`;
+      const link = `${window.location.origin}/invite/${contractNum}`;
       setInviteModal({ open: true, contractNum, link });
     } else if (action === 'INITIATE_BREACH') {
       setRiskAlerts(prev => prev.filter(a => a.contractNumber !== contractNum));
@@ -220,15 +223,20 @@ export default function Dashboard() {
           <StatCard
             title="Active Executing Contracts"
             value={summary?.executingContracts.count || 0}
-            trend={{ value: summary?.executingContracts.trend || '0% vs last month', positive: true }}
+            trend={{ value: summary?.executingContracts.trend || '0 Active', positive: true }}
             subtitle="Contracts actively monitored"
             icon={Briefcase}
           />
           <StatCard
             title="Escrow Capital Locked"
             value={formatCurrency(summary?.escrowCapital.totalLocked || 0)}
-            trend={{ value: `$${Math.round((summary?.escrowCapital.pendingRelease48h || 0) / 1000)}k releasing in 48h`, positive: true }}
-            subtitle="Secured in ACEE Treasury"
+            trend={{
+              value: (summary?.escrowCapital.pendingRelease48h || 0) > 0
+                ? `$${Math.round((summary?.escrowCapital.pendingRelease48h || 0) / 1000)}k releasing in 48h`
+                : 'No pending release',
+              positive: true
+            }}
+            subtitle="Secured in Treasury"
             icon={DollarSign}
           />
           <StatCard
@@ -241,7 +249,12 @@ export default function Dashboard() {
           <StatCard
             title="Awaiting Signed Upload"
             value={summary?.awaitingCreatorSignedUpload.count || 0}
-            trend={{ value: `${summary?.awaitingCreatorSignedUpload.slaBreached72h || 0} Overdue SLA`, positive: false }}
+            trend={{
+              value: (summary?.awaitingCreatorSignedUpload.slaBreached72h || 0) > 0
+                ? `${summary?.awaitingCreatorSignedUpload.slaBreached72h || 0} Overdue SLA`
+                : 'All SLAs healthy',
+              positive: (summary?.awaitingCreatorSignedUpload.slaBreached72h || 0) === 0
+            }}
             subtitle="Onboarded Creators"
             icon={Clock}
           />
@@ -322,44 +335,50 @@ export default function Dashboard() {
             </div>
 
             <div className="space-y-3.5">
-              {campaignHealth.map((cmp) => (
-                <div key={cmp.id} className="p-4 rounded-xl border border-border bg-muted/10 space-y-3">
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <Link to={`/campaigns/${cmp.id}/timeline`} className="text-xs font-semibold text-foreground hover:text-primary transition-colors">
-                        {cmp.name}
-                      </Link>
-                      <p className="text-[10px] font-mono text-muted-foreground">#{cmp.id}</p>
-                    </div>
-                    <Badge 
-                      variant="outline" 
-                      className={`text-[10px] font-mono ${
-                        cmp.health === 'OPTIMAL' 
-                          ? 'border-emerald-500/30 text-emerald-500 bg-emerald-500/10' 
-                          : 'border-amber-500/30 text-amber-500 bg-amber-500/10'
-                      }`}
-                    >
-                      {cmp.health}
-                    </Badge>
-                  </div>
-
-                  <div className="space-y-1">
-                    <div className="flex justify-between text-[11px] text-muted-foreground font-mono">
-                      <span>Execution Progress</span>
-                      <span className="font-semibold text-foreground">{cmp.progressPercent}%</span>
-                    </div>
-                    <Progress value={cmp.progressPercent} className="h-1.5" />
-                  </div>
-
-                  <div className="flex items-center justify-between text-[11px] text-muted-foreground pt-1 border-t border-border/30">
-                    <span>Budget: <strong className="text-foreground font-mono">{formatCurrency(cmp.budget)}</strong></span>
-                    <span>Escrow Locked: <strong className="text-foreground font-mono">{formatCurrency(cmp.lockedEscrow)}</strong></span>
-                    <Button size="sm" variant="ghost" className="h-6 text-[11px] px-2 text-primary" onClick={() => navigate(`/campaigns/${cmp.id}/timeline`)}>
-                      Timeline Studio &rarr;
-                    </Button>
-                  </div>
+              {campaignHealth.length === 0 ? (
+                <div className="text-center py-8 border border-dashed rounded-lg text-xs text-muted-foreground">
+                  No active campaigns yet. Create a campaign to start tracking progress.
                 </div>
-              ))}
+              ) : (
+                campaignHealth.map((cmp) => (
+                  <div key={cmp.id} className="p-4 rounded-xl border border-border bg-muted/10 space-y-3">
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <Link to={`/campaigns/${cmp.id}/timeline`} className="text-xs font-semibold text-foreground hover:text-primary transition-colors">
+                          {cmp.name}
+                        </Link>
+                        <p className="text-[10px] font-mono text-muted-foreground">#{cmp.id}</p>
+                      </div>
+                      <Badge 
+                        variant="outline" 
+                        className={`text-[10px] font-mono ${
+                          cmp.health === 'OPTIMAL' 
+                            ? 'border-emerald-500/30 text-emerald-500 bg-emerald-500/10' 
+                            : 'border-amber-500/30 text-amber-500 bg-amber-500/10'
+                        }`}
+                      >
+                        {cmp.health}
+                      </Badge>
+                    </div>
+
+                    <div className="space-y-1">
+                      <div className="flex justify-between text-[11px] text-muted-foreground font-mono">
+                        <span>Execution Progress</span>
+                        <span className="font-semibold text-foreground">{cmp.progressPercent}%</span>
+                      </div>
+                      <Progress value={cmp.progressPercent} className="h-1.5" />
+                    </div>
+
+                    <div className="flex items-center justify-between text-[11px] text-muted-foreground pt-1 border-t border-border/30">
+                      <span>Budget: <strong className="text-foreground font-mono">{formatCurrency(cmp.budget)}</strong></span>
+                      <span>Escrow Locked: <strong className="text-foreground font-mono">{formatCurrency(cmp.lockedEscrow)}</strong></span>
+                      <Button size="sm" variant="ghost" className="h-6 text-[11px] px-2 text-primary" onClick={() => navigate(`/campaigns/${cmp.id}/timeline`)}>
+                        Timeline Studio &rarr;
+                      </Button>
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
           </div>
 
@@ -439,7 +458,7 @@ export default function Dashboard() {
                         <ContractStatusBadge status={c.status} />
                       </td>
                       <td className="py-3 font-mono text-[10px] text-muted-foreground">
-                        {c.terms_hash ? `${c.terms_hash.substring(0, 16)}...` : 'SHA256: 8f4e3c2b1a9e...'}
+                        {c.terms_hash ? `${c.terms_hash.substring(0, 16)}...` : 'Pending Hash'}
                       </td>
                       <td className="py-3 text-right">
                         <Link to={`/contracts/${c.id}`}>
@@ -475,22 +494,28 @@ export default function Dashboard() {
                   <div className="flex items-center justify-between">
                     <span className="font-semibold text-foreground">Contract Number: {inspectProofModal.contractNum}</span>
                     <Badge variant="outline" className="text-[9px] font-mono text-emerald-500 border-emerald-500/30">
-                      99.1% MATCH SCORE
+                      COMPLIANCE VERIFIED
                     </Badge>
                   </div>
-                  <p className="text-[11px] text-muted-foreground">Automated ACEE Compliance Crawler verified YouTube live video URL.</p>
+                  <p className="text-[11px] text-muted-foreground">ACEE Compliance Crawler contract telemetry status.</p>
                 </div>
 
                 <div className="space-y-1.5 font-mono text-[11px]">
-                  <span className="text-muted-foreground block uppercase text-[9px]">Submitted Video Link:</span>
-                  <a href="https://youtube.com/watch?v=acme_glow_review" target="_blank" rel="noreferrer" className="text-primary underline flex items-center gap-1">
-                    https://youtube.com/watch?v=acme_glow_review <ExternalLink className="w-3 h-3" />
-                  </a>
+                  <span className="text-muted-foreground block uppercase text-[9px]">Submitted Link:</span>
+                  {inspectProofModal.contract?.deliverable_link ? (
+                    <a href={inspectProofModal.contract.deliverable_link} target="_blank" rel="noreferrer" className="text-primary underline flex items-center gap-1">
+                      {inspectProofModal.contract.deliverable_link} <ExternalLink className="w-3 h-3" />
+                    </a>
+                  ) : (
+                    <span className="text-muted-foreground italic">No submission link uploaded yet.</span>
+                  )}
                 </div>
 
                 <div className="p-2.5 rounded bg-muted/30 border border-border/50 font-mono text-[10px] space-y-1">
-                  <span className="text-muted-foreground uppercase block">Cryptographic Proof Hash (SHA-256):</span>
-                  <span className="text-primary break-all block">e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855</span>
+                  <span className="text-muted-foreground uppercase block">Cryptographic Terms Hash:</span>
+                  <span className="text-primary break-all block">
+                    {inspectProofModal.contract?.terms_hash || 'Pending SHA-256 hash generation on contract lock'}
+                  </span>
                 </div>
               </div>
 
