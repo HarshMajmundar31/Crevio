@@ -18,7 +18,21 @@ const app = express();
 
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
-app.use(clerkMiddleware());
+
+const publishableKey =
+  process.env.CLERK_PUBLISHABLE_KEY ||
+  process.env.VITE_CLERK_PUBLISHABLE_KEY ||
+  process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
+
+const secretKey = process.env.CLERK_SECRET_KEY;
+
+app.use((req, res, next) => {
+  if (!publishableKey || !secretKey) {
+    console.warn('[Clerk Warning] CLERK_PUBLISHABLE_KEY or CLERK_SECRET_KEY is missing from environment variables.');
+    return next();
+  }
+  return clerkMiddleware({ publishableKey, secretKey })(req, res, next);
+});
 
 app.use('/api/health', healthRoutes);
 app.use('/api/auth', authRoutes);

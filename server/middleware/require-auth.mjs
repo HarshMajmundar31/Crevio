@@ -61,20 +61,37 @@ async function findOrBootstrapUser({ userId, email, name }) {
 }
 
 export function requireClerkAuth(req, res, next) {
-  const auth = getAuth(req);
+  try {
+    const auth = getAuth(req);
 
-  if (!auth?.userId) {
-    return res.status(401).json({ error: 'Missing or invalid Clerk bearer token' });
+    if (!auth?.userId) {
+      return res.status(401).json({ error: 'Missing or invalid Clerk bearer token' });
+    }
+
+    const profile = normalizeProfile(auth.userId, auth.sessionClaims || {});
+    req.authContext = profile;
+    return next();
+  } catch (error) {
+    console.error('[requireClerkAuth Error]', error);
+    return res.status(401).json({
+      error: 'Unauthenticated',
+      message: error?.message || 'Missing or invalid authentication credentials.',
+    });
   }
-
-  const profile = normalizeProfile(auth.userId, auth.sessionClaims || {});
-  req.authContext = profile;
-  return next();
 }
 
 export async function requireAuth(req, res, next) {
   try {
-    const auth = getAuth(req);
+    let auth;
+    try {
+      auth = getAuth(req);
+    } catch (err) {
+      return res.status(401).json({
+        error: 'Unauthenticated',
+        message: err?.message || 'Missing or invalid authentication credentials.',
+      });
+    }
+
     if (!auth?.userId) {
       return res.status(401).json({ error: 'Missing or invalid Clerk bearer token' });
     }
