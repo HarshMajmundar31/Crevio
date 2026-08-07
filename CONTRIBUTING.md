@@ -1,4 +1,4 @@
-# Contributing to ACEMS
+# Contributing to Crevio
 
 Thank you for your interest in contributing to the Academic Contract Event Management System!
 
@@ -84,4 +84,4 @@ Feel free to open an issue for any questions or concerns.
 - Focus on the code, not the person
 - Help others learn and grow
 
-Thank you for contributing to ACEMS! 🎉
+Thank you for contributing to Crevio! 🎉
