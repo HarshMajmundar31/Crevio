@@ -32,8 +32,12 @@ function normalizeProfile(userId, sessionClaims = {}) {
 
 async function findOrBootstrapUser({ userId, email, name }) {
   const userResult = await query(
-    'SELECT id, full_name, email, role FROM users WHERE id = $1 AND is_active = TRUE',
-    [userId]
+    `SELECT id, full_name, email, role 
+     FROM users 
+     WHERE (id = $1 OR (email IS NOT NULL AND $2::text IS NOT NULL AND email = $2)) AND is_active = TRUE
+     ORDER BY CASE WHEN id = $1 THEN 0 ELSE 1 END 
+     LIMIT 1`,
+    [userId, email || null]
   );
 
   if (userResult.rows[0]) {

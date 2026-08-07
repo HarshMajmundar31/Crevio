@@ -168,10 +168,23 @@ export default function Landing() {
 
       {/* Hero Section */}
       <section className="pt-32 pb-20 px-6 relative overflow-hidden">
-        <div className="absolute inset-0 gradient-mesh opacity-30" />
-        <div className="absolute inset-0 dot-pattern opacity-20" />
+        {/* Background Video */}
+        <video
+          autoPlay
+          loop
+          muted
+          playsInline
+          className="absolute inset-0 w-full h-full object-cover z-0 opacity-20 pointer-events-none"
+        >
+          <source src="/Landing_page_animation.mp4" type="video/mp4" />
+        </video>
+
+        {/* Overlay Gradients for smooth blending */}
+        <div className="absolute inset-0 gradient-mesh opacity-20 z-0" />
+        <div className="absolute inset-0 dot-pattern opacity-10 z-0" />
+        <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-background to-transparent z-10" />
         
-        <div className="max-w-7xl mx-auto relative z-10">
+        <div className="max-w-7xl mx-auto relative z-20">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}

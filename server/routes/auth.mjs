@@ -62,31 +62,15 @@ router.get('/me', requireClerkAuth, async (req, res) => {
     const { userId, email, name } = await resolveAuthContextProfile(req.authContext);
 
     let userResult = await query(
-      'SELECT id, full_name, email, role, onboarding_step, linkedin_linked, linkedin_data, onboarding_draft FROM users WHERE id = $1 AND is_active = TRUE',
-      [userId]
+      `SELECT id, full_name, email, role, onboarding_step, linkedin_linked, linkedin_data, onboarding_draft 
+       FROM users 
+       WHERE (id = $1 OR (email IS NOT NULL AND $2::text IS NOT NULL AND email = $2)) AND is_active = TRUE
+       ORDER BY CASE WHEN id = $1 THEN 0 ELSE 1 END 
+       LIMIT 1`,
+      [userId, email || null]
     );
 
     let user = userResult.rows[0] || null;
-
-    // If user not found by ID, check if user exists by Email and re-link to new Clerk userId
-    if (!user && email) {
-      const userByEmail = await query(
-        'SELECT id, full_name, email, role, onboarding_step, linkedin_linked, linkedin_data, onboarding_draft FROM users WHERE email = $1 AND is_active = TRUE',
-        [email]
-      );
-      if (userByEmail.rows[0]) {
-        const remapped = await query(
-          `UPDATE users
-           SET id = $1,
-               full_name = COALESCE($2, full_name),
-               updated_at = NOW()
-           WHERE email = $3
-           RETURNING id, full_name, email, role, onboarding_step, linkedin_linked, linkedin_data, onboarding_draft`,
-          [userId, name, email]
-        );
-        user = remapped.rows[0] || userByEmail.rows[0];
-      }
-    }
 
     if (user) {
       const shouldUpdateName =
@@ -104,7 +88,7 @@ router.get('/me', requireClerkAuth, async (req, res) => {
                updated_at = NOW()
            WHERE id = $1
            RETURNING id, full_name, email, role, onboarding_step, linkedin_linked, linkedin_data, onboarding_draft`,
-          [userId, shouldUpdateName ? name : null, shouldUpdateEmail ? email : null]
+          [user.id, shouldUpdateName ? name : null, shouldUpdateEmail ? email : null]
         );
 
         user = updated.rows[0] || user;
@@ -183,14 +167,18 @@ router.post('/onboard', requireClerkAuth, async (req, res) => {
       });
     }
 
-    // 1. Check if user already exists by ID
-    const existingById = await query(
-      'SELECT id, full_name, email, role, onboarding_step, linkedin_linked, linkedin_data, onboarding_draft FROM users WHERE id = $1',
-      [userId]
+    // 1. Check if user already exists by ID OR by Email
+    const existingUserResult = await query(
+      `SELECT id, full_name, email, role, onboarding_step, linkedin_linked, linkedin_data, onboarding_draft 
+       FROM users 
+       WHERE (id = $1 OR (email IS NOT NULL AND $2::text IS NOT NULL AND email = $2))
+       ORDER BY CASE WHEN id = $1 THEN 0 ELSE 1 END 
+       LIMIT 1`,
+      [userId, email || null]
     );
 
-    if (existingById.rows[0]) {
-      const user = existingById.rows[0];
+    if (existingUserResult.rows[0]) {
+      const existingUser = existingUserResult.rows[0];
       const updated = await query(
         `UPDATE users
          SET role = $2,
@@ -201,45 +189,16 @@ router.post('/onboard', requireClerkAuth, async (req, res) => {
              updated_at = NOW()
          WHERE id = $1
          RETURNING id, full_name, email, role, onboarding_step, linkedin_linked, linkedin_data, onboarding_draft`,
-        [userId, role, name, email]
+        [existingUser.id, role, name, email]
       );
-      const updatedUser = updated.rows[0] || user;
+      const updatedUser = updated.rows[0] || existingUser;
       return res.json({
         user: toApiUser(updatedUser),
         needsOnboarding: updatedUser.onboarding_step === null || updatedUser.onboarding_step > 0,
       });
     }
 
-    // 2. Check if user already exists by Email (e.g. from seed or old Clerk user)
-    if (email) {
-      const existingByEmail = await query(
-        'SELECT id, full_name, email, role, onboarding_step, linkedin_linked, linkedin_data, onboarding_draft FROM users WHERE email = $1',
-        [email]
-      );
-
-      if (existingByEmail.rows[0]) {
-        const user = existingByEmail.rows[0];
-        const remapped = await query(
-          `UPDATE users
-           SET id = $1,
-               role = $2,
-               full_name = COALESCE($3, full_name),
-               is_active = TRUE,
-               onboarding_step = COALESCE(onboarding_step, 1),
-               updated_at = NOW()
-           WHERE email = $4
-           RETURNING id, full_name, email, role, onboarding_step, linkedin_linked, linkedin_data, onboarding_draft`,
-          [userId, role, name, email]
-        );
-        const remappedUser = remapped.rows[0] || user;
-        return res.json({
-          user: toApiUser(remappedUser),
-          needsOnboarding: remappedUser.onboarding_step === null || remappedUser.onboarding_step > 0,
-        });
-      }
-    }
-
-    // 3. Insert brand new user record
+    // 2. Insert brand new user record if not found by ID or Email
     let insertedUser = null;
     try {
       const inserted = await query(
