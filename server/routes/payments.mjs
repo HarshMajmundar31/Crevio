@@ -9,18 +9,33 @@ const router = Router();
 
 let razorpayInstance = null;
 
-function getRazorpay() {
-  const keyId = process.env.RAZORPAY_KEY_ID || 'rzp_test_TMoehPXBFAhtVP';
-  const keySecret = process.env.RAZORPAY_KEY_SECRET || 'dbHk1ziwP4w3pubpfjVzrVMl';
+function getRazorpayKeyId() {
+  const keyId = process.env.RAZORPAY_KEY_ID;
+  if (!keyId) {
+    throw new Error('RAZORPAY_KEY_ID is not configured in environment variables.');
+  }
+  return keyId;
+}
 
+function getRazorpayKeySecret() {
+  const keySecret = process.env.RAZORPAY_KEY_SECRET;
+  if (!keySecret) {
+    throw new Error('RAZORPAY_KEY_SECRET is not configured in environment variables.');
+  }
+  return keySecret;
+}
+
+function getRazorpay() {
   if (!razorpayInstance) {
+    const keyId = getRazorpayKeyId();
+    const keySecret = getRazorpayKeySecret();
     try {
       razorpayInstance = new Razorpay({
         key_id: keyId,
         key_secret: keySecret,
       });
     } catch (err) {
-      console.warn('[Razorpay Warning] Razorpay initialization deferred:', err?.message || String(err));
+      console.error('[Razorpay Error] Initialization failed:', err?.message || String(err));
       return null;
     }
   }
@@ -109,7 +124,7 @@ router.post('/contracts/:id/create-order', requireAuth, requireRole('brand', 'ad
       orderId: order.id, 
       amount: amountInPaise, 
       currency: 'INR',
-      keyId: process.env.RAZORPAY_KEY_ID || 'rzp_test_TMoehPXBFAhtVP'
+      keyId: getRazorpayKeyId()
     });
   } catch (error) {
     console.error('Create Razorpay order error:', error);
@@ -130,7 +145,7 @@ router.post('/contracts/:id/verify-payment', requireAuth, requireRole('brand', '
     // Mathematical HMAC signature verification
     const body = razorpay_order_id + '|' + razorpay_payment_id;
     const expectedSignature = crypto
-      .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET || 'dbHk1ziwP4w3pubpfjVzrVMl')
+      .createHmac('sha256', getRazorpayKeySecret())
       .update(body.toString())
       .digest('hex');
 
@@ -353,7 +368,7 @@ router.post('/deposit/create-order', requireAuth, async (req, res) => {
       orderId: order.id,
       amount: amountInPaise,
       currency: 'INR',
-      keyId: process.env.RAZORPAY_KEY_ID || 'rzp_test_TMoehPXBFAhtVP'
+      keyId: getRazorpayKeyId()
     });
   } catch (error) {
     console.error('Create deposit order error:', error);
@@ -373,7 +388,7 @@ router.post('/deposit/verify', requireAuth, async (req, res) => {
     // Verify Signature
     const body = razorpay_order_id + '|' + razorpay_payment_id;
     const expectedSignature = crypto
-      .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET || 'dbHk1ziwP4w3pubpfjVzrVMl')
+      .createHmac('sha256', getRazorpayKeySecret())
       .update(body.toString())
       .digest('hex');
 
@@ -489,7 +504,7 @@ router.post('/campaigns/:id/create-order', requireAuth, requireRole('brand', 'ad
       orderId: order.id, 
       amount: amountInPaise, 
       currency: 'INR',
-      keyId: process.env.RAZORPAY_KEY_ID || 'rzp_test_TMoehPXBFAhtVP'
+      keyId: getRazorpayKeyId()
     });
   } catch (error) {
     console.error('Create campaign Razorpay order error:', error);
@@ -517,7 +532,7 @@ router.post('/campaigns/:id/verify-payment', requireAuth, requireRole('brand', '
     // Mathematical HMAC signature verification
     const body = razorpay_order_id + '|' + razorpay_payment_id;
     const expectedSignature = crypto
-      .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET || 'dbHk1ziwP4w3pubpfjVzrVMl')
+      .createHmac('sha256', getRazorpayKeySecret())
       .update(body.toString())
       .digest('hex');
 

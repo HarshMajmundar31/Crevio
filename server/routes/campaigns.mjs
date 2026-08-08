@@ -129,6 +129,14 @@ router.post('/ai-assistant', requireAuth, requireRole('brand', 'admin'), async (
     return res.status(400).json({ error: 'Valid messages array is required' });
   }
 
+  const openai = getOpenAI();
+  if (!openai) {
+    return res.status(503).json({
+      error: 'AI assistant is not available',
+      details: 'OPENAI_API_KEY is not configured. Please set it in your environment variables.',
+    });
+  }
+
   try {
     const completion = await openai.chat.completions.create({
       model: "gpt-4o-mini",
@@ -167,8 +175,12 @@ If you are missing information, ask the user in the 'reply' field. Always aim to
     const aiResponse = JSON.parse(completion.choices[0].message.content);
     res.json({ success: true, ...aiResponse });
   } catch (error) {
-    console.error('OpenAI Error:', error);
-    res.status(500).json({ error: 'Failed to process AI request' });
+    console.error('[AI Assistant Error]', error?.message || error);
+    const statusCode = error?.status || 500;
+    res.status(statusCode).json({
+      error: 'Failed to process AI request',
+      details: error?.message || 'An unexpected error occurred with the AI service.',
+    });
   }
 });
 
@@ -703,34 +715,8 @@ router.patch('/:id', requireAuth, requireRole('brand', 'admin'), async (req, res
   return res.json({ success: true, campaignId });
 });
 
-router.delete('/:id', requireAuth, requireRole('brand', 'admin'), async (req, res, next) => {
-  try {
-    const campaignId = req.params.id;
-    
-    const campaignResult = await query(
-      'SELECT id, brand_id FROM campaigns WHERE id = $1',
-      [campaignId]
-    );
-    
-    const campaign = campaignResult.rows[0];
-    if (!campaign) {
-      return res.status(404).json({ error: 'Campaign not found' });
-    }
-
-    if (req.user.role !== 'admin' && campaign.brand_id !== req.user.userId) {
-      return res.status(403).json({ error: 'Only campaign owner or admin can delete this campaign' });
-    }
-
-    await query(
-      `UPDATE campaigns SET status = 'cancelled', updated_at = NOW() WHERE id = $1`,
-      [campaignId]
-    );
-
-    res.json({ success: true, campaignId, status: 'cancelled' });
-  } catch (error) {
-    next(error);
-  }
-});
+// NOTE: Duplicate DELETE /:id route was removed. The canonical handler is registered above (line ~533)
+// with proper locked-contract protection checks.
 
 // GET /api/campaigns/:id/execution-matrix - Contract Execution Lifecycle Matrix
 router.get('/:id/execution-matrix', async (req, res, next) => {

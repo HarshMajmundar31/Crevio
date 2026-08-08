@@ -442,7 +442,7 @@ router.post('/verify-meta', requireClerkAuth, async (req, res) => {
     return res.status(400).json({ error: 'Instagram handle or username is required' });
   }
 
-  const metaToken = process.env.META_GRAPH_TOKEN || 'EAA8XvHSiliIBSHegesx0EqWpvPtR1ggnbjYNBi2dqWqrmMFCXANZBetfiSlB32qanYwSbzZBcFNOBViZAJhgk5pcuJtdpL0ySuBL3Dz8QDa63cfZCAzdwGpjSX2sYaZCaAHY4UEIksLvdBOTrkpCW9zK9JkYZANCIDKhzXwDvhsZBZA37O4YH0uPG1ryRFg7uwZDZD';
+  const metaToken = process.env.META_GRAPH_TOKEN || null;
 
   console.log(`[MetaGraphAPI] Querying real live Instagram metrics for @${cleanHandle}...`);
 
@@ -577,7 +577,10 @@ router.post('/login', async (req, res) => {
   }
 
   const hasHash = Boolean(user.password_hash);
-  const passwordMatches = hasHash ? await bcrypt.compare(password, user.password_hash) : true;
+  if (!hasHash) {
+    return res.status(401).json({ error: 'Password login is not enabled for this account. Please use Clerk SSO instead.' });
+  }
+  const passwordMatches = await bcrypt.compare(password, user.password_hash);
 
   if (!passwordMatches) {
     return res.status(401).json({ error: 'Invalid credentials' });
