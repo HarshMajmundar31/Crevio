@@ -15,6 +15,8 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { apiVerifyMetaAccount, apiSaveCreatorOnboarding } from '@/lib/api';
+import InstagramConnectCard from '@/components/InstagramConnectCard';
+
 
 export interface ConnectedChannel {
   id: string;
@@ -330,16 +332,21 @@ export default function CreatorProfile() {
           </div>
         </div>
 
-        {/* Section 1: Dynamic Multi-Account Social Connections Grid */}
+        {/* Section 1: Official Instagram Connect & Social Channels */}
+        <div className="space-y-4">
+          <InstagramConnectCard variant="full" showStubToggle={true} />
+        </div>
+
+        {/* Additional Channels List */}
         <div className="rounded-xl border border-border bg-card p-6 space-y-4">
           <div className="flex items-center justify-between border-b border-border/50 pb-3">
             <div>
               <h3 className="text-base font-bold text-foreground flex items-center gap-2">
                 <ShieldCheck className="w-5 h-5 text-accent" />
-                Connected Channels & Verified Metrics ({connectedAccounts.length})
+                Additional Channels & Verified Metrics ({connectedAccounts.length})
               </h3>
               <p className="text-xs text-muted-foreground">
-                Manage multiple Instagram handles, YouTube channels, and TikTok accounts with live Meta Graph API metric verification.
+                Manage YouTube channels, TikTok accounts, and secondary channels with live metric verification.
               </p>
             </div>
             <Button
@@ -349,9 +356,10 @@ export default function CreatorProfile() {
               className="text-xs gap-1.5"
             >
               <Plus className="w-3.5 h-3.5 text-accent" />
-              Add Another Account
+              Add Channel
             </Button>
           </div>
+
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {connectedAccounts.map((account) => (

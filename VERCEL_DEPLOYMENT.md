@@ -55,8 +55,15 @@ Set these in your **Vercel Project Settings -> Environment Variables**:
 | `VITE_CLOUDINARY_API_KEY` | Optional | `784877527...` | Cloudinary API Key |
 | `CLOUDINARY_API_SECRET` | Optional | `MU3gUF...` | Cloudinary API Secret |
 | `OPENAI_API_KEY` | Optional | `sk-proj-...` | OpenAI Key for AI features |
+| `INSTAGRAM_APP_ID` | Yes | `4248222828762658` | Meta / Instagram App ID |
+| `INSTAGRAM_APP_SECRET` | Yes | `<your_app_secret>` | Meta / Instagram App Secret |
+| `INSTAGRAM_REDIRECT_URI` | Yes | `https://crevio.co.in/api/auth/instagram/callback` | Meta OAuth Redirect URI for crevio.co.in |
+| `FRONTEND_URL` | Yes | `https://crevio.co.in` | Production frontend domain |
+| `STATE_JWT_SECRET` | Yes | `random_secret_string` | Secret for signing OAuth state tokens |
+| `TOKEN_ENCRYPTION_KEY` | Yes | `32-byte hex string (64 chars)` | AES-256-GCM token encryption key |
 
-> **Note**: `VITE_API_URL` is **not required** on Vercel because both frontend and API are hosted on the same domain. The frontend automatically routes `/api/*` to the Vercel serverless Express function.
+> **Note**: `VITE_API_URL` is **not required** on Vercel because both frontend and API are hosted on domain `crevio.co.in`. The frontend automatically routes `/api/*` to the Vercel serverless Express function.
+
 
 ---
 

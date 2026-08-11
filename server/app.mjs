@@ -23,6 +23,8 @@ import userRoutes from './routes/users.mjs';
 import workspaceRoutes from './routes/workspaces.mjs';
 import dashboardRoutes from './routes/dashboard.mjs';
 import paymentRoutes from './routes/payments.mjs';
+import instagramRoutes from './routes/instagram.mjs';
+
 
 const app = express();
 
@@ -56,6 +58,8 @@ app.use('/api/workspaces', workspaceRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/v1/brand/dashboard', dashboardRoutes);
 app.use('/api/payments', paymentRoutes);
+app.use('/api', instagramRoutes);
+
 
 app.use((error, _req, res, _next) => {
   console.error('[API Error]', error);

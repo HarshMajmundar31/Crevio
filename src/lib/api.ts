@@ -702,4 +702,44 @@ export async function apiMarkNotificationAsRead(id: string) {
   return request<{ success: boolean }>(`/api/notifications/${id}/read`, 'POST');
 }
 
+// ----- Instagram Connect & Graph API Helpers -----
+
+export interface InstagramAccountResponse {
+  connected: boolean;
+  platformUserId?: string;
+  username?: string;
+  displayName?: string;
+  profilePictureUrl?: string;
+  accountType?: string;
+  followersCount?: number;
+  mediaCount?: number;
+  connectedAt?: string;
+  needsReconnect?: boolean;
+}
+
+export async function apiGetInstagramConnectUrl(): Promise<{ url: string }> {
+  return request<{ url: string }>('/api/auth/instagram/connect-url', 'GET');
+}
+
+export async function apiGetInstagramAccount(): Promise<InstagramAccountResponse> {
+  try {
+    return await request<InstagramAccountResponse>('/api/social/instagram/account', 'GET');
+  } catch (err: any) {
+    if (err?.status === 404 || err?.payload?.connected === false) {
+      return { connected: false };
+    }
+    return { connected: false };
+  }
+}
+
+
+export async function apiGetInstagramInsights(): Promise<{ available: boolean; reason?: string; metrics?: any[] }> {
+  return request<{ available: boolean; reason?: string; metrics?: any[] }>('/api/social/instagram/insights', 'GET');
+}
+
+export async function apiDisconnectInstagram(): Promise<void> {
+  return request<void>('/api/social/instagram/disconnect', 'DELETE');
+}
+
+
 

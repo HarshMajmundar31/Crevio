@@ -3,6 +3,8 @@ import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import StatCard from '@/components/StatCard';
 import ContractStatusBadge from '@/components/ContractStatusBadge';
+import InstagramConnectCard from '@/components/InstagramConnectCard';
+
 import {
   Briefcase, DollarSign, Clock, ClipboardCheck, Sparkles,
   ArrowUpRight, RefreshCw, Upload, FileText, CheckCircle2,
@@ -175,35 +177,10 @@ export default function CreatorDashboardView({ displayName }: CreatorDashboardVi
             Browse Campaigns
           </Button>
         </div>
-      </div>
 
-      {/* Verified Creator Social Accounts & Rate Card Quick Banner */}
-      <div className="p-4 rounded-xl border border-border bg-card/80 flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl gradient-accent flex items-center justify-center shrink-0">
-            <ShieldCheck className="w-5 h-5 text-accent-foreground" />
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="font-bold text-sm text-foreground">Verified Creator Identity</span>
-              <Badge className="bg-emerald-500/10 text-emerald-500 border-emerald-500/20 text-[9px] gap-1 px-2 py-0">
-                <CheckCircle2 className="w-2.5 h-2.5" /> Meta Graph API Verified
-              </Badge>
-            </div>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              Instagram: <strong className="text-foreground">{activeInstagramHandle} ({activeFollowersCount} Followers)</strong> • Baseline Reel Rate: <strong className="text-foreground">{activeReelRate}</strong>
-            </p>
-          </div>
-        </div>
+           {/* Official Instagram Connect & Verified Metrics Banner */}
+      <InstagramConnectCard variant="banner" showStubToggle={false} />
 
-        <Button
-          size="sm"
-          variant="outline"
-          onClick={() => navigate('/profile')}
-          className="text-xs gap-1.5 shrink-0"
-        >
-          Manage Accounts & Rates →
-        </Button>
       </div>
 
       {/* Creator KPI Stat Cards Grid */}
