@@ -20,6 +20,8 @@ build/
 .env.development.local
 .env.test.local
 .env.production.local
+facebookdeveloperss/
+
 
 # Debug
 npm-debug.log*
