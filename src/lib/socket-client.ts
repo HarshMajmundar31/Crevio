@@ -2,24 +2,48 @@ import { io, Socket } from 'socket.io-client';
 
 let socket: Socket | null = null;
 
-export function getSocket(): Socket {
+export function getSocket(): Socket | null {
   if (!socket) {
-    const socketUrl = import.meta.env.VITE_API_URL || (typeof window !== 'undefined' ? window.location.origin : '');
-    socket = io(socketUrl, {
-      transports: ['websocket', 'polling'],
-      autoConnect: true,
-      reconnection: true,
-      reconnectionAttempts: 10,
-      reconnectionDelay: 1000,
-    });
+    const rawApiUrl = import.meta.env.VITE_SOCKET_URL || import.meta.env.VITE_API_URL;
+    let socketUrl = rawApiUrl;
 
-    socket.on('connect', () => {
-      console.log('[Socket.IO Client] Connected to real-time execution server:', socket?.id);
-    });
+    if (!socketUrl && typeof window !== 'undefined') {
+      const hostname = window.location.hostname;
+      if (hostname === 'localhost' || hostname === '127.0.0.1') {
+        socketUrl = 'http://localhost:3000';
+      } else {
+        // Production deployment without explicit socket URL: return null to prevent WebSocket error loops on Vercel
+        return null;
+      }
+    }
 
-    socket.on('disconnect', (reason) => {
-      console.log('[Socket.IO Client] Disconnected:', reason);
-    });
+    if (!socketUrl) return null;
+
+    try {
+      socket = io(socketUrl, {
+        transports: ['polling', 'websocket'],
+        autoConnect: true,
+        reconnection: true,
+        reconnectionAttempts: 3,
+        reconnectionDelay: 5000,
+        timeout: 5000,
+      });
+
+      socket.on('connect', () => {
+        console.log('[Socket.IO Client] Connected to real-time execution server:', socket?.id);
+      });
+
+      socket.on('connect_error', (err) => {
+        console.warn('[Socket.IO Client] Socket connection notice:', err?.message);
+      });
+
+      socket.on('disconnect', (reason) => {
+        console.log('[Socket.IO Client] Disconnected:', reason);
+      });
+    } catch (err) {
+      console.warn('[Socket.IO Client] Failed to initialize socket:', err);
+      return null;
+    }
   }
 
   return socket;
@@ -27,6 +51,7 @@ export function getSocket(): Socket {
 
 export function subscribeToRealtimeEvents(onEvent: (event: { type: string; payload: any }) => void) {
   const socketInstance = getSocket();
+  if (!socketInstance) return () => {};
 
   const handleContractEvent = (payload: any) => {
     onEvent({ type: 'CONTRACT_EVENT', payload });
@@ -50,3 +75,4 @@ export function subscribeToRealtimeEvents(onEvent: (event: { type: string; paylo
     socketInstance.off('risk_alert', handleRiskAlertEvent);
   };
 }
+
