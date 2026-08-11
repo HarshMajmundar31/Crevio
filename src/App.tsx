@@ -30,6 +30,13 @@ import AdminDashboard from "./pages/AdminDashboard";
 import NotFound from "./pages/NotFound";
 import CampaignDetail from "./pages/CampaignDetail";
 import AuditLogs from "./pages/AuditLogs";
+import PrivacyPolicy from "./pages/PrivacyPolicy";
+import TermsAndConditions from "./pages/TermsAndConditions";
+import RefundPolicy from "./pages/RefundPolicy";
+import CookiePolicy from "./pages/CookiePolicy";
+import AcceptableUsePolicy from "./pages/AcceptableUsePolicy";
+import CreatorGuidelines from "./pages/CreatorGuidelines";
+import CopyrightPolicy from "./pages/CopyrightPolicy";
 
 const queryClient = new QueryClient();
 
@@ -119,6 +126,13 @@ const AppRoutes = () => {
     <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
       <Routes>
         <Route path="/" element={<Landing />} />
+        <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+        <Route path="/terms" element={<TermsAndConditions />} />
+        <Route path="/refund-policy" element={<RefundPolicy />} />
+        <Route path="/cookie-policy" element={<CookiePolicy />} />
+        <Route path="/acceptable-use" element={<AcceptableUsePolicy />} />
+        <Route path="/creator-guidelines" element={<CreatorGuidelines />} />
+        <Route path="/copyright-policy" element={<CopyrightPolicy />} />
         <Route path="/login/*" element={<PublicRoute><Login /></PublicRoute>} />
         <Route path="/choose-role" element={<PublicRoute><ChooseRole /></PublicRoute>} />
         <Route path="/signup/*" element={<PublicRoute><Signup /></PublicRoute>} />

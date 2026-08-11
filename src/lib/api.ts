@@ -682,4 +682,24 @@ export async function apiFundContractWithWallet(contractId: string) {
   );
 }
 
+export interface ApiNotification {
+  id: string;
+  user_id: string;
+  contract_id?: string;
+  decision_id?: string;
+  title: string;
+  message: string;
+  is_read: boolean;
+  created_at: string;
+}
+
+export async function apiGetNotifications() {
+  return request<{ notifications: ApiNotification[] }>('/api/notifications', 'GET');
+}
+
+export async function apiMarkNotificationAsRead(id: string) {
+
+  return request<{ success: boolean }>(`/api/notifications/${id}/read`, 'POST');
+}
+
 

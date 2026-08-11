@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Navigate, useNavigate } from 'react-router-dom';
+import { Navigate, useNavigate, Link } from 'react-router-dom';
 import { useAuth as useClerkAuth, useUser } from '@clerk/clerk-react';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
@@ -132,7 +132,7 @@ export default function ChooseRole() {
           </Button>
 
           <p className="text-xs text-center text-muted-foreground">
-            By selecting a role, you agree to our Terms of Service and Privacy Policy.
+            By selecting a role, you agree to our <Link to="/terms" className="underline hover:text-foreground">Terms of Service</Link> and <Link to="/privacy-policy" className="underline hover:text-foreground">Privacy Policy</Link>.
           </p>
 
           <div className="pt-4 mt-6 border-t border-border/50">

@@ -1,4 +1,4 @@
-import { Navigate, useNavigate } from 'react-router-dom';
+import { Navigate, useNavigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { LogoIcon } from '@/components/LogoIcon';
 import { Button } from '@/components/ui/button';
@@ -479,11 +479,15 @@ export default function Landing() {
             </div>
             
             <div>
-              <h4 className="font-semibold mb-4">Legal & Trust</h4>
+              <h4 className="font-semibold mb-4">Legal & Policies</h4>
               <ul className="space-y-2 text-sm text-muted-foreground">
-                <li><a href="#" className="hover:text-foreground">Contract Security</a></li>
-                <li><a href="#" className="hover:text-foreground">Terms of Service</a></li>
-                <li><a href="#" className="hover:text-foreground">Privacy Policy</a></li>
+                <li><Link to="/terms" className="hover:text-foreground">Terms of Service</Link></li>
+                <li><Link to="/privacy-policy" className="hover:text-foreground">Privacy Policy</Link></li>
+                <li><Link to="/refund-policy" className="hover:text-foreground">Refund Policy</Link></li>
+                <li><Link to="/cookie-policy" className="hover:text-foreground">Cookie Policy</Link></li>
+                <li><Link to="/acceptable-use" className="hover:text-foreground">Acceptable Use</Link></li>
+                <li><Link to="/creator-guidelines" className="hover:text-foreground">Creator Guidelines</Link></li>
+                <li><Link to="/copyright-policy" className="hover:text-foreground">Copyright & DMCA</Link></li>
               </ul>
             </div>
           </div>

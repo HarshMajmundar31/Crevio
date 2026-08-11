@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { broadcastEvent } from '../lib/socket.mjs';
 import multer from 'multer';
 import { query } from '../lib/db.mjs';
 import { createId } from '../lib/ids.mjs';
@@ -546,11 +547,19 @@ router.post('/:id/accept', requireAuth, requireRole('creator'), async (req, res)
   const contractInfoResult = await query('SELECT brand_id FROM contracts WHERE id = $1', [contractId]);
   const contractInfo = contractInfoResult.rows[0];
   if (contractInfo?.brand_id) {
+    const title = 'Creator e-sign completed';
+    const message = `Creator signed contract ${contractId}. Waiting final submission for lock.`;
     await query(
       `INSERT INTO notifications (id, user_id, contract_id, title, message)
        VALUES ($1, $2, $3, $4, $5)`,
-      [createId('notif'), contractInfo.brand_id, contractId, 'Creator e-sign completed', `Creator signed contract ${contractId}. Waiting final submission for lock.`]
+      [createId('notif'), contractInfo.brand_id, contractId, title, message]
     );
+    broadcastEvent('notification', { 
+      title, 
+      message, 
+      userId: contractInfo.brand_id, 
+      timestamp: new Date().toISOString() 
+    });
   }
 
   const applicationResult = await query('SELECT id FROM campaign_applications WHERE contract_id = $1', [contractId]);
@@ -635,6 +644,8 @@ router.post('/:id/lock', requireAuth, requireRole('creator', 'admin'), async (re
     [createId('evt'), contractId, req.user.userId, JSON.stringify({ termsHash: immutableHash, finalSubmissionUrl })]
   );
 
+  const title = 'Contract locked after creator final submission';
+  const message = `Creator completed final submission and contract ${contractId} is now locked.`;
   await query(
     `INSERT INTO notifications (id, user_id, contract_id, title, message)
      VALUES ($1, $2, $3, $4, $5)`,
@@ -642,10 +653,16 @@ router.post('/:id/lock', requireAuth, requireRole('creator', 'admin'), async (re
       createId('notif'),
       contract.brand_id,
       contractId,
-      'Contract locked after creator final submission',
-      `Creator completed final submission and contract ${contractId} is now locked.`,
+      title,
+      message,
     ]
   );
+  broadcastEvent('notification', { 
+    title, 
+    message, 
+    userId: contract.brand_id, 
+    timestamp: new Date().toISOString() 
+  });
 
   const applicationResult = await query('SELECT id FROM campaign_applications WHERE contract_id = $1', [contractId]);
   const applicationId = applicationResult.rows[0]?.id;
@@ -826,21 +843,26 @@ router.post('/:id/execute', requireAuth, requireRole('brand', 'admin'), async (r
     console.error('Failed to process automated escrow release hook:', escHookError);
   }
 
+  const executeTitle = 'Contract Decision Ready';
+  const executeMessage = `Contract ${contractId} was evaluated as ${evaluation.decision}`;
   await query(
     `INSERT INTO notifications (id, user_id, contract_id, decision_id, title, message)
      VALUES
-       ($1, $2, $3, $4, 'Contract Decision Ready', $5),
-       ($6, $7, $3, $4, 'Contract Decision Ready', $5)`,
+       ($1, $2, $3, $4, $5, $6),
+       ($7, $8, $3, $4, $5, $6)`,
     [
       createId('noti'),
       contract.brand_id,
       contractId,
       decisionId,
-      `Contract ${contractId} was evaluated as ${evaluation.decision}`,
+      executeTitle,
+      executeMessage,
       createId('noti'),
       contract.creator_id,
     ]
   );
+  broadcastEvent('notification', { title: executeTitle, message: executeMessage, userId: contract.brand_id, timestamp: new Date().toISOString() });
+  broadcastEvent('notification', { title: executeTitle, message: executeMessage, userId: contract.creator_id, timestamp: new Date().toISOString() });
 
   await query(
     `INSERT INTO contract_events (id, contract_id, actor_user_id, event_type, payload)

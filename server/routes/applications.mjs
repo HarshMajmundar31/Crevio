@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { broadcastEvent } from '../lib/socket.mjs';
 import { query } from '../lib/db.mjs';
 import { createId } from '../lib/ids.mjs';
 import { requireAuth } from '../middleware/require-auth.mjs';
@@ -305,6 +306,12 @@ router.patch('/:id/status', requireAuth, async (req, res) => {
        VALUES ($1, $2, $3, $4)`,
       [createId('notif'), application.creator_id, title, message]
     );
+    broadcastEvent('notification', { 
+      title, 
+      message, 
+      userId: application.creator_id, 
+      timestamp: new Date().toISOString() 
+    });
   }
 
   return res.json({ applicationId, status: nextStatus || application.status });
