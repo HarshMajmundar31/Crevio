@@ -72,8 +72,9 @@ router.get('/auth/instagram/connect-url', requireAuth, (req, res) => {
       scopes = scopes || 'instagram_business_basic,instagram_business_manage_insights';
     } else {
       authBaseUrl = authBaseUrl || 'https://www.facebook.com/v19.0/dialog/oauth';
-      scopes = scopes || 'instagram_basic,instagram_manage_insights,pages_show_list,pages_read_engagement';
+      scopes = scopes || 'public_profile,instagram_basic,instagram_manage_insights,pages_show_list,pages_read_engagement';
     }
+
 
     const url = `${authBaseUrl}?client_id=${encodeURIComponent(appId)}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=${encodeURIComponent(scopes)}&state=${encodeURIComponent(stateToken)}`;
 
