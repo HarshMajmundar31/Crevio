@@ -62,21 +62,11 @@ router.get('/auth/instagram/connect-url', requireAuth, (req, res) => {
     const appId = process.env.INSTAGRAM_APP_ID || '4248222828762658';
     const redirectUri = getRedirectUri(req);
     
-    const isDirectInstagram = process.env.INSTAGRAM_AUTH_MODE === 'instagram';
-    
-    let authBaseUrl = process.env.INSTAGRAM_AUTH_URL;
-    let scopes = process.env.INSTAGRAM_SCOPES;
-
-    if (isDirectInstagram) {
-      authBaseUrl = authBaseUrl || 'https://api.instagram.com/oauth/authorize';
-      scopes = scopes || 'instagram_business_basic,instagram_business_manage_insights';
-    } else {
-      authBaseUrl = authBaseUrl || 'https://www.facebook.com/v19.0/dialog/oauth';
-      scopes = scopes || 'public_profile,instagram_basic,instagram_manage_insights,pages_show_list,pages_read_engagement';
-    }
-
+    const authBaseUrl = process.env.INSTAGRAM_AUTH_URL || 'https://api.instagram.com/oauth/authorize';
+    const scopes = process.env.INSTAGRAM_SCOPES || 'instagram_business_basic,instagram_business_manage_insights';
 
     const url = `${authBaseUrl}?client_id=${encodeURIComponent(appId)}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=${encodeURIComponent(scopes)}&state=${encodeURIComponent(stateToken)}`;
+
 
     return res.json({ url });
 
