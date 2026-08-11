@@ -59,20 +59,16 @@ router.get('/auth/instagram/connect-url', requireAuth, (req, res) => {
       { expiresIn: '10m' }
     );
 
-    const appId = process.env.INSTAGRAM_APP_ID || '4248222828762658';
+    const appId = process.env.INSTAGRAM_APP_ID || '1357507459683840';
     const redirectUri = getRedirectUri(req);
     
-    const authBaseUrl = process.env.INSTAGRAM_AUTH_URL || 'https://api.instagram.com/oauth/authorize';
-    const scopes = process.env.INSTAGRAM_SCOPES || 'instagram_business_basic,instagram_business_manage_insights';
+    const authBaseUrl = process.env.INSTAGRAM_AUTH_URL || 'https://www.instagram.com/oauth/authorize';
+    const scopes = process.env.INSTAGRAM_SCOPES || 'instagram_business_basic,instagram_business_manage_messages,instagram_business_manage_comments,instagram_business_content_publish,instagram_business_manage_insights';
 
-    const url = `${authBaseUrl}?client_id=${encodeURIComponent(appId)}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=${encodeURIComponent(scopes)}&state=${encodeURIComponent(stateToken)}`;
-
-
-    return res.json({ url });
-
-
+    const url = `${authBaseUrl}?force_reauth=true&client_id=${encodeURIComponent(appId)}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=${encodeURIComponent(scopes)}&state=${encodeURIComponent(stateToken)}`;
 
     return res.json({ url });
+
   } catch (error) {
     console.error('[GET /connect-url Error]', error);
     return res.status(500).json({ error: 'Failed to generate connect URL' });
