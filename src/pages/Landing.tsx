@@ -130,34 +130,34 @@ export default function Landing() {
   return (
     <div className="min-h-screen bg-background">
       {/* Navigation */}
-      <nav className="fixed top-0 w-full z-50 bg-background/80 backdrop-blur-xl border-b">
+      <nav className="fixed top-0 w-full z-50 bg-white/80 backdrop-blur-xl border-b border-pink-100">
         <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <LogoIcon className="w-10 h-10 shrink-0" />
             <div>
-              <span className="text-xl font-bold">Crevio</span>
-              <p className="text-[8px] text-muted-foreground uppercase tracking-wider -mt-0.5">Contract Engine</p>
+              <span className="text-2xl font-extrabold tracking-tight text-gradient-brand">Crevio</span>
+              <p className="text-[8px] text-muted-foreground uppercase tracking-widest -mt-0.5 font-bold">Contract Engine</p>
             </div>
           </div>
           
           <div className="hidden md:flex items-center gap-8">
-            <a href="#ecosystem" className="text-sm font-medium hover:text-primary transition-colors">Marketplace</a>
-            <a href="#features" className="text-sm font-medium hover:text-primary transition-colors">Features</a>
-            <a href="#how-it-works" className="text-sm font-medium hover:text-primary transition-colors">How it Works</a>
-            <a href="#benefits" className="text-sm font-medium hover:text-primary transition-colors">Benefits</a>
+            <a href="#ecosystem" className="text-sm font-semibold text-foreground/80 hover:text-primary transition-colors">Marketplace</a>
+            <a href="#features" className="text-sm font-semibold text-foreground/80 hover:text-primary transition-colors">Features</a>
+            <a href="#how-it-works" className="text-sm font-semibold text-foreground/80 hover:text-primary transition-colors">How it Works</a>
+            <a href="#benefits" className="text-sm font-semibold text-foreground/80 hover:text-primary transition-colors">Benefits</a>
           </div>
 
           <div className="flex items-center gap-3">
             {isAuthenticated ? (
-              <Button className="gradient-primary text-primary-foreground font-semibold" onClick={() => navigate(redirectPath)}>
+              <Button className="gradient-brand text-white font-bold shadow-md shadow-pink-500/20" onClick={() => navigate(redirectPath)}>
                 Go to Dashboard
               </Button>
             ) : (
               <>
-                <Button variant="ghost" onClick={() => navigate('/login')}>
+                <Button variant="ghost" className="font-semibold text-foreground hover:bg-pink-50" onClick={() => navigate('/login')}>
                   Sign In
                 </Button>
-                <Button className="gradient-primary text-primary-foreground font-semibold" onClick={() => navigate('/signup')}>
+                <Button className="gradient-brand text-white font-bold shadow-md shadow-pink-500/20 hover:opacity-95" onClick={() => navigate('/signup')}>
                   Get Early Access
                 </Button>
               </>
@@ -167,20 +167,20 @@ export default function Landing() {
       </nav>
 
       {/* Hero Section */}
-      <section className="pt-32 pb-20 px-6 relative overflow-hidden">
+      <section className="pt-32 pb-20 px-6 relative overflow-hidden bg-gradient-to-b from-orange-50/40 via-pink-50/30 to-background">
         {/* Background Video */}
         <video
           autoPlay
           loop
           muted
           playsInline
-          className="absolute inset-0 w-full h-full object-cover z-0 opacity-20 pointer-events-none"
+          className="absolute inset-0 w-full h-full object-cover z-0 opacity-15 pointer-events-none"
         >
           <source src="/Landing_page_animation.mp4" type="video/mp4" />
         </video>
 
         {/* Overlay Gradients for smooth blending */}
-        <div className="absolute inset-0 gradient-mesh opacity-20 z-0" />
+        <div className="absolute inset-0 gradient-mesh opacity-80 z-0" />
         <div className="absolute inset-0 dot-pattern opacity-10 z-0" />
         <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-background to-transparent z-10" />
         
@@ -191,26 +191,26 @@ export default function Landing() {
             transition={{ duration: 0.6 }}
             className="text-center max-w-4xl mx-auto"
           >
-            <div className="inline-flex items-center gap-2 bg-accent/10 border border-accent/20 rounded-full px-4 py-2 mb-6">
-              <Sparkles className="w-4 h-4 text-accent" />
-              <span className="text-sm font-medium text-accent">Autonomous Contract & Collaboration Platform</span>
+            <div className="inline-flex items-center gap-2 bg-gradient-to-r from-orange-50 to-pink-50 border border-pink-200 rounded-full px-4 py-2 mb-6 shadow-sm">
+              <Sparkles className="w-4 h-4 text-[#D61B8C]" />
+              <span className="text-sm font-bold text-[#D61B8C]">Autonomous Contract & Collaboration Platform</span>
             </div>
 
-            <h1 className="text-5xl md:text-7xl font-extrabold mb-6 leading-tight">
+            <h1 className="text-5xl md:text-7xl font-extrabold mb-6 leading-tight tracking-tight text-foreground">
               Contract Fulfillment &
-              <span className="block text-gradient bg-gradient-to-r from-accent via-secondary to-primary bg-clip-text text-transparent">
+              <span className="block text-gradient-brand font-black">
                 Creator Marketplace
               </span>
             </h1>
 
-            <p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto leading-relaxed">
+            <p className="text-lg md:text-xl text-foreground/70 mb-8 max-w-2xl mx-auto leading-relaxed font-medium">
               Eliminate scope creep and delayed payments. Crevio connects brands and creators through structured campaign briefs, locked contracts, and automated deliverable verification.
             </p>
 
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-12">
               <Button 
                 size="lg" 
-                className="gradient-accent text-accent-foreground font-semibold px-8 text-lg h-14"
+                className="gradient-brand text-white font-extrabold px-8 text-lg h-14 shadow-lg shadow-pink-500/25 hover:opacity-95 transition-all"
                 onClick={() => navigate('/signup')}
               >
                 Get Started Free
@@ -219,15 +219,15 @@ export default function Landing() {
               <Button 
                 size="lg" 
                 variant="outline"
-                className="px-8 text-lg h-14"
+                className="px-8 text-lg h-14 bg-white border-pink-200 hover:bg-pink-50 text-foreground font-bold shadow-sm"
                 onClick={() => navigate('/login')}
               >
                 Explore Marketplace
-                <Briefcase className="w-5 h-5 ml-2" />
+                <Briefcase className="w-5 h-5 ml-2 text-pink-600" />
               </Button>
             </div>
 
-            <p className="text-sm text-muted-foreground">
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
               Bootstrap Platform Release • Built for Brands, Creators & Agencies
             </p>
           </motion.div>
@@ -241,17 +241,17 @@ export default function Landing() {
             className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mt-20"
           >
             {corePillars.map((pillar, i) => (
-              <div key={i} className="glass-card-elevated p-6 relative overflow-hidden group hover:border-accent/40 transition-all">
+              <div key={i} className="glass-card-elevated p-6 relative overflow-hidden group hover:border-pink-300 hover:shadow-xl hover:shadow-pink-500/10 transition-all">
                 <div className="flex items-center justify-between mb-4">
-                  <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${pillar.color} flex items-center justify-center`}>
+                  <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${pillar.color} flex items-center justify-center shadow-md`}>
                     <pillar.icon className="w-6 h-6 text-white" />
                   </div>
-                  <span className="text-[10px] font-semibold uppercase tracking-wider bg-accent/10 text-accent px-2.5 py-1 rounded-full border border-accent/20">
+                  <span className="text-[10px] font-bold uppercase tracking-wider bg-pink-50 text-pink-600 px-2.5 py-1 rounded-full border border-pink-200">
                     {pillar.badge}
                   </span>
                 </div>
                 <h3 className="text-lg font-bold mb-1">{pillar.title}</h3>
-                <p className="text-xs text-accent font-medium mb-2">{pillar.subtitle}</p>
+                <p className="text-xs text-[#D61B8C] font-semibold mb-2">{pillar.subtitle}</p>
                 <p className="text-xs text-muted-foreground leading-relaxed">{pillar.description}</p>
               </div>
             ))}
@@ -260,36 +260,36 @@ export default function Landing() {
       </section>
 
       {/* Core Ecosystem Highlight */}
-      <section className="py-16 px-6 bg-card/40 border-y">
+      <section className="py-16 px-6 bg-white border-y border-pink-100">
         <div className="max-w-7xl mx-auto">
           <div className="grid md:grid-cols-3 gap-8">
             <div className="flex gap-4 items-start">
-              <div className="w-10 h-10 rounded-xl gradient-primary flex items-center justify-center shrink-0">
+              <div className="w-10 h-10 rounded-xl gradient-primary flex items-center justify-center shrink-0 shadow-md">
                 <ClipboardCheck className="w-5 h-5 text-white" />
               </div>
               <div>
                 <h4 className="font-bold mb-1">Contract Fulfillment</h4>
-                <p className="text-sm text-muted-foreground">Clear milestone tracking and verifiable deliverable sign-offs for every campaign.</p>
+                <p className="text-sm text-foreground/60">Clear milestone tracking and verifiable deliverable sign-offs for every campaign.</p>
               </div>
             </div>
 
             <div className="flex gap-4 items-start">
-              <div className="w-10 h-10 rounded-xl gradient-accent flex items-center justify-center shrink-0">
-                <Users className="w-5 h-5 text-accent-foreground" />
+              <div className="w-10 h-10 rounded-xl gradient-accent flex items-center justify-center shrink-0 shadow-md">
+                <Users className="w-5 h-5 text-white" />
               </div>
               <div>
                 <h4 className="font-bold mb-1">Creator Marketplace</h4>
-                <p className="text-sm text-muted-foreground">Browse verified creator profiles, audience stats, and application proposals.</p>
+                <p className="text-sm text-foreground/60">Browse verified creator profiles, audience stats, and application proposals.</p>
               </div>
             </div>
 
             <div className="flex gap-4 items-start">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-r from-pink-500 to-purple-500 flex items-center justify-center shrink-0">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-r from-pink-500 to-purple-500 flex items-center justify-center shrink-0 shadow-md">
                 <Briefcase className="w-5 h-5 text-white" />
               </div>
               <div>
                 <h4 className="font-bold mb-1">Campaign Marketplace</h4>
-                <p className="text-sm text-muted-foreground">Brands publish structured briefs with budget bounds and deliverable specifications.</p>
+                <p className="text-sm text-foreground/60">Brands publish structured briefs with budget bounds and deliverable specifications.</p>
               </div>
             </div>
           </div>
@@ -297,11 +297,11 @@ export default function Landing() {
       </section>
 
       {/* Features Section */}
-      <section id="features" className="py-20 px-6 bg-muted/20">
+      <section id="features" className="py-20 px-6 bg-slate-50/50">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
             <h2 className="text-4xl font-bold mb-4">Platform Features</h2>
-            <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+            <p className="text-xl text-foreground/60 max-w-2xl mx-auto">
               Built to manage brand-creator partnerships with clarity, speed, and trust
             </p>
           </div>
@@ -314,13 +314,13 @@ export default function Landing() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ delay: i * 0.1 }}
-                className="glass-card-elevated p-8 group hover:shadow-2xl transition-all duration-300"
+                className="glass-card-elevated p-8 group hover:shadow-2xl hover:border-pink-300 transition-all duration-300"
               >
-                <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${feature.color} flex items-center justify-center mb-5 group-hover:scale-110 transition-transform`}>
+                <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${feature.color} flex items-center justify-center mb-5 group-hover:scale-110 transition-transform shadow-md`}>
                   <feature.icon className="w-7 h-7 text-white" />
                 </div>
                 <h3 className="text-xl font-bold mb-3">{feature.title}</h3>
-                <p className="text-muted-foreground leading-relaxed">{feature.description}</p>
+                <p className="text-foreground/60 leading-relaxed text-sm">{feature.description}</p>
               </motion.div>
             ))}
           </div>
@@ -332,7 +332,7 @@ export default function Landing() {
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
             <h2 className="text-4xl font-bold mb-4">How Crevio Works</h2>
-            <p className="text-xl text-muted-foreground">Simple 3-step contract and campaign workflow</p>
+            <p className="text-xl text-foreground/60">Simple 3-step contract and campaign workflow</p>
           </div>
 
           <div className="grid md:grid-cols-3 gap-8">
@@ -359,13 +359,13 @@ export default function Landing() {
                 whileInView={{ opacity: 1, x: 0 }}
                 viewport={{ once: true }}
                 transition={{ delay: i * 0.2 }}
-                className="relative glass-card p-8"
+                className="relative glass-card p-8 border-pink-100"
               >
-                <div className="text-5xl font-extrabold text-accent/20 mb-4">{item.step}</div>
+                <div className="text-5xl font-extrabold text-[#D61B8C]/50 mb-4">{item.step}</div>
                 <h3 className="text-2xl font-bold mb-3">{item.title}</h3>
-                <p className="text-muted-foreground leading-relaxed">{item.desc}</p>
+                <p className="text-foreground/60 leading-relaxed text-sm">{item.desc}</p>
                 {i < 2 && (
-                  <ArrowRight className="hidden md:block absolute top-1/2 -right-4 w-8 h-8 text-accent/40 z-20" />
+                  <ArrowRight className="hidden md:block absolute top-1/2 -right-4 w-8 h-8 text-pink-400 z-20" />
                 )}
               </motion.div>
             ))}
@@ -374,25 +374,25 @@ export default function Landing() {
       </section>
 
       {/* Platform Benefits */}
-      <section id="benefits" className="py-20 px-6 bg-muted/20">
+      <section id="benefits" className="py-20 px-6 bg-gradient-to-b from-slate-50/50 to-pink-50/30">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
             <h2 className="text-4xl font-bold mb-4">Designed for Both Sides of the Market</h2>
-            <p className="text-xl text-muted-foreground">Empowering Brands and Creators with equal trust and transparency</p>
+            <p className="text-xl text-foreground/60">Empowering Brands and Creators with equal trust and transparency</p>
           </div>
 
           <div className="grid md:grid-cols-2 gap-8">
             {platformBenefits.map((benefit, i) => (
-              <div key={i} className={`glass-card p-8 border rounded-2xl bg-gradient-to-br ${benefit.gradient}`}>
-                <span className="text-xs font-bold uppercase tracking-wider text-accent bg-accent/10 border border-accent/20 px-3 py-1 rounded-full mb-4 inline-block">
+              <div key={i} className="glass-card-elevated p-8 border border-pink-200 rounded-2xl bg-white shadow-lg">
+                <span className="text-xs font-bold uppercase tracking-wider text-white gradient-brand px-3 py-1 rounded-full mb-4 inline-block shadow-sm">
                   {benefit.target}
                 </span>
                 <h3 className="text-2xl font-bold mb-6">{benefit.title}</h3>
                 <ul className="space-y-4">
                   {benefit.items.map((item, idx) => (
                     <li key={idx} className="flex items-start gap-3">
-                      <CheckCircle2 className="w-5 h-5 text-accent shrink-0 mt-0.5" />
-                      <span className="text-sm text-foreground/90">{item}</span>
+                      <CheckCircle2 className="w-5 h-5 text-pink-600 shrink-0 mt-0.5" />
+                      <span className="text-sm font-medium text-foreground/90">{item}</span>
                     </li>
                   ))}
                 </ul>
@@ -409,20 +409,20 @@ export default function Landing() {
             initial={{ opacity: 0, scale: 0.95 }}
             whileInView={{ opacity: 1, scale: 1 }}
             viewport={{ once: true }}
-            className="gradient-hero rounded-3xl p-12 md:p-16 text-center text-primary-foreground relative overflow-hidden"
+            className="bg-gradient-to-br from-[#E8364F] via-[#D61B8C] to-[#9D4EDD] rounded-3xl p-12 md:p-16 text-center text-white relative overflow-hidden shadow-2xl shadow-pink-500/20"
           >
             <div className="absolute inset-0 grid-pattern opacity-10" />
             <div className="relative z-10">
-              <h2 className="text-4xl md:text-5xl font-bold mb-6">
+              <h2 className="text-4xl md:text-5xl font-extrabold mb-6 drop-shadow-sm">
                 Start Managing Contracts with Total Clarity
               </h2>
-              <p className="text-xl text-primary-foreground/80 mb-8 max-w-2xl mx-auto leading-relaxed">
+              <p className="text-xl text-white/90 mb-8 max-w-2xl mx-auto leading-relaxed font-medium">
                 Join forward-thinking brands and creators building transparent partnerships on Crevio.
               </p>
               <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
                 <Button 
                   size="lg" 
-                  className="bg-white text-primary hover:bg-white/90 font-semibold px-8 text-lg h-14"
+                  className="bg-white text-pink-700 hover:bg-slate-100 font-extrabold px-8 text-lg h-14 shadow-lg"
                   onClick={() => navigate('/signup')}
                 >
                   Get Early Access
@@ -431,13 +431,13 @@ export default function Landing() {
                 <Button 
                   size="lg" 
                   variant="outline"
-                  className="border-white/20 text-white hover:bg-white/10 px-8 text-lg h-14"
+                  className="border-white/40 text-white bg-white/10 hover:bg-white/20 px-8 text-lg h-14 font-bold"
                   onClick={() => navigate('/login')}
                 >
                   Sign In
                 </Button>
               </div>
-              <p className="text-sm text-primary-foreground/60 mt-6">
+              <p className="text-xs text-white/80 uppercase tracking-widest mt-6 font-semibold">
                 Bootstrap Release • Transparent Contract Management Platform
               </p>
             </div>
@@ -446,7 +446,7 @@ export default function Landing() {
       </section>
 
       {/* Footer */}
-      <footer className="border-t py-12 px-6">
+      <footer className="border-t border-pink-100 py-12 px-6 bg-white">
         <div className="max-w-7xl mx-auto">
           <div className="grid md:grid-cols-4 gap-8 mb-8">
             <div>
@@ -454,14 +454,14 @@ export default function Landing() {
                 <LogoIcon className="w-8 h-8 shrink-0" />
                 <span className="font-bold text-lg">Crevio</span>
               </div>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-sm text-foreground/50">
                 Autonomous Contract Execution & Creator Collaboration Engine
               </p>
             </div>
             
             <div>
               <h4 className="font-semibold mb-4">Platform</h4>
-              <ul className="space-y-2 text-sm text-muted-foreground">
+              <ul className="space-y-2 text-sm text-foreground/60">
                 <li><a href="#ecosystem" className="hover:text-foreground">Campaign Marketplace</a></li>
                 <li><a href="#ecosystem" className="hover:text-foreground">Creator Marketplace</a></li>
                 <li><a href="#features" className="hover:text-foreground">Contract Fulfillment</a></li>
@@ -471,7 +471,7 @@ export default function Landing() {
             
             <div>
               <h4 className="font-semibold mb-4">Ecosystem</h4>
-              <ul className="space-y-2 text-sm text-muted-foreground">
+              <ul className="space-y-2 text-sm text-foreground/60">
                 <li><a href="#benefits" className="hover:text-foreground">For Brands</a></li>
                 <li><a href="#benefits" className="hover:text-foreground">For Creators</a></li>
                 <li><a href="#how-it-works" className="hover:text-foreground">Workflow</a></li>
@@ -480,7 +480,7 @@ export default function Landing() {
             
             <div>
               <h4 className="font-semibold mb-4">Legal & Policies</h4>
-              <ul className="space-y-2 text-sm text-muted-foreground">
+              <ul className="space-y-2 text-sm text-foreground/60">
                 <li><Link to="/terms" className="hover:text-foreground">Terms of Service</Link></li>
                 <li><Link to="/privacy-policy" className="hover:text-foreground">Privacy Policy</Link></li>
                 <li><Link to="/refund-policy" className="hover:text-foreground">Refund Policy</Link></li>
@@ -493,11 +493,11 @@ export default function Landing() {
           </div>
           
           <div className="border-t pt-8 flex flex-col md:flex-row items-center justify-between gap-4">
-            <p className="text-sm text-muted-foreground">
+            <p className="text-sm text-foreground/50">
               © {new Date().getFullYear()} Crevio. All rights reserved.
             </p>
             <div className="flex items-center gap-4">
-              <Activity className="w-5 h-5 text-muted-foreground" />
+              <Activity className="w-5 h-5 text-foreground/50" />
             </div>
           </div>
         </div>

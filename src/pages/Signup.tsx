@@ -18,54 +18,60 @@ export default function Signup() {
   }
 
   return (
-    <div className="min-h-screen flex">
+    <div className="min-h-screen flex bg-background">
       {/* Left Side - Branding */}
-      <div className="hidden lg:flex lg:w-1/2 gradient-hero text-primary-foreground relative overflow-hidden">
+      <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-[#E8364F] via-[#D61B8C] to-[#9D4EDD] text-white relative overflow-hidden">
         <div className="absolute inset-0 overflow-hidden">
-          <div className="absolute top-1/4 -left-20 w-[500px] h-[500px] rounded-full bg-accent/10 blur-[120px] animate-pulse-soft" />
-          <div className="absolute bottom-1/4 -right-20 w-[600px] h-[600px] rounded-full bg-primary/20 blur-[120px] animate-pulse-soft" style={{ animationDelay: '1.5s' }} />
-          <div className="absolute inset-0 grid-pattern opacity-20" />
+          <div className="absolute inset-0 bg-black/10" />
+          <div className="absolute top-1/4 -left-20 w-[500px] h-[500px] rounded-full bg-orange-400/15 blur-[120px] animate-pulse-soft" />
+          <div className="absolute bottom-1/4 -right-20 w-[600px] h-[600px] rounded-full bg-purple-400/25 blur-[140px] animate-pulse-soft" style={{ animationDelay: '1.5s' }} />
+          <div className="absolute inset-0 grid-pattern opacity-10" />
         </div>
 
-        <div className="relative z-10 flex flex-col justify-center px-12 w-full">
+        <div className="relative z-10 flex flex-col justify-center px-14 w-full">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
           >
             <div className="flex items-center gap-3 mb-8">
-              <LogoIcon className="w-10 h-10 shrink-0" />
+              <LogoIcon className="w-12 h-12 shrink-0" />
               <div>
-                <span className="text-2xl font-bold tracking-wide">Crevio</span>
-                <p className="text-[10px] text-primary-foreground/40 uppercase tracking-[0.2em]">Autonomous Contract Engine</p>
+                <span className="text-3xl font-extrabold tracking-wide text-white drop-shadow-sm">Crevio</span>
+                <p className="text-[10px] text-white/80 uppercase tracking-[0.2em] font-semibold">Autonomous Contract Engine</p>
               </div>
             </div>
 
-            <h1 className="text-4xl font-bold mb-4">
-              Join the Future of<br />Contract Management
+            <div className="inline-flex items-center gap-2 bg-white/20 backdrop-blur-md border border-white/30 rounded-full px-4 py-1.5 mb-6 text-sm font-medium text-white shadow-sm">
+              <span className="w-2 h-2 rounded-full bg-yellow-300 animate-ping" />
+              Join Verified Creators & Brands
+            </div>
+
+            <h1 className="text-4xl lg:text-5xl font-extrabold mb-4 leading-tight text-white drop-shadow-sm">
+              Join the Future of<br />Contract Automation
             </h1>
-            <p className="text-primary-foreground/60 text-lg mb-8">
-              Create your account and start managing contracts with transparency and automation.
+            <p className="text-white/90 text-lg mb-8 max-w-lg leading-relaxed font-medium">
+              Create your account to publish briefs, accept proposals, and automate contract milestone releases.
             </p>
 
             <div className="space-y-4">
               {[
-                { icon: Shield, text: 'Secure & encrypted platform' },
-                { icon: Lock, text: 'Immutable contract locking' },
-                { icon: Briefcase, text: 'Multi-platform campaign support' },
-                { icon: ArrowRight, text: 'Automated compliance checks' }
+                { icon: Shield, text: 'Guaranteed milestone approvals' },
+                { icon: Lock, text: 'Immutable contract term locking' },
+                { icon: Briefcase, text: 'Multi-platform creator marketplace' },
+                { icon: ArrowRight, text: 'Automated AI compliance check' }
               ].map((feature, i) => (
                 <motion.div
                   key={i}
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.3 + i * 0.1 }}
-                  className="flex items-center gap-3"
+                  className="flex items-center gap-3 bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl px-4 py-3 max-w-md"
                 >
-                  <div className="w-6 h-6 rounded-lg bg-accent/20 flex items-center justify-center">
-                    <feature.icon className="w-3 h-3 text-accent" />
+                  <div className="w-7 h-7 rounded-lg bg-yellow-400 text-slate-900 flex items-center justify-center font-bold shadow-sm shrink-0">
+                    <feature.icon className="w-4 h-4 text-slate-900" />
                   </div>
-                  <span className="text-primary-foreground/80">{feature.text}</span>
+                  <span className="text-white font-medium text-sm">{feature.text}</span>
                 </motion.div>
               ))}
             </div>
@@ -73,16 +79,16 @@ export default function Signup() {
         </div>
       </div>
 
-      <div className="w-full lg:w-1/2 flex items-center justify-center p-8 bg-background">
+      <div className="w-full lg:w-1/2 flex items-center justify-center p-8 bg-gradient-to-br from-orange-50/40 via-pink-50/30 to-purple-50/40">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
           className="w-full max-w-md"
         >
-          <div className="lg:hidden flex items-center gap-2 mb-8">
-            <LogoIcon className="w-8 h-8 shrink-0" />
-            <span className="text-xl font-bold">Crevio</span>
+          <div className="lg:hidden flex items-center gap-3 mb-8">
+            <LogoIcon className="w-10 h-10 shrink-0" />
+            <span className="text-2xl font-extrabold text-foreground">Crevio</span>
           </div>
 
           <div className="space-y-4">
