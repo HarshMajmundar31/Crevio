@@ -7,6 +7,18 @@ import { requireClerkAuth } from '../middleware/require-auth.mjs';
 
 const router = Router();
 
+async function syncClerkPublicMetadata(userId, role) {
+  if (!userId || !role) return;
+  try {
+    await clerkClient.users.updateUserMetadata(userId, {
+      publicMetadata: { role }
+    });
+    console.log(`[syncClerkPublicMetadata] Successfully synced role '${role}' to Clerk publicMetadata for ${userId}`);
+  } catch (err) {
+    console.error(`[syncClerkPublicMetadata] Sync warning for ${userId}:`, err?.message || err);
+  }
+}
+
 function toApiUser(row) {
   console.log(`[toApiUser] Mapping user ${row.id}: role=${row.role}, step=${row.onboarding_step}`);
   return {
@@ -138,6 +150,9 @@ router.get('/me', requireClerkAuth, async (req, res) => {
 
     console.log(`[Auth/me] DEBUG: role=${user.role}, step=${user.onboarding_step}, stepType=${typeof user.onboarding_step}, needsOnboarding=${needsOnboarding}`);
 
+    // Asynchronously ensure role is in Clerk publicMetadata
+    void syncClerkPublicMetadata(user.id, user.role);
+
     const response = {
       user: toApiUser(user),
       needsOnboarding: needsOnboarding,
@@ -192,6 +207,7 @@ router.post('/onboard', requireClerkAuth, async (req, res) => {
         [existingUser.id, role, name, email]
       );
       const updatedUser = updated.rows[0] || existingUser;
+      await syncClerkPublicMetadata(userId, role);
       return res.json({
         user: toApiUser(updatedUser),
         needsOnboarding: updatedUser.onboarding_step === null || updatedUser.onboarding_step > 0,
@@ -226,6 +242,8 @@ router.post('/onboard', requireClerkAuth, async (req, res) => {
         throw insertErr;
       }
     }
+
+    await syncClerkPublicMetadata(userId, role);
 
     return res.status(201).json({
       user: toApiUser(insertedUser),

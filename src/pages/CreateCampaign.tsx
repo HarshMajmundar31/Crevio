@@ -477,7 +477,7 @@ export default function CreateCampaign() {
           </div>
           </div>
           
-          <div className="hidden lg:block sticky top-6">
+          <div className="hidden lg:block sticky top-4 h-[calc(100vh-6rem)] max-h-[650px] shrink-0">
             <CampaignAIAssistant onApplyData={handleApplyData} />
           </div>
         </div>

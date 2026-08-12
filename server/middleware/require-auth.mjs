@@ -101,6 +101,26 @@ export async function requireAuth(req, res, next) {
     }
 
     const profile = normalizeProfile(auth.userId, auth.sessionClaims || {});
+    
+    // Check if role exists directly in Clerk JWT session claims
+    const sessionClaims = auth.sessionClaims || {};
+    const jwtRole = 
+      sessionClaims.metadata?.role || 
+      sessionClaims.public_metadata?.role || 
+      sessionClaims.role;
+
+    if (jwtRole && ['brand', 'creator', 'admin'].includes(jwtRole)) {
+      req.authContext = profile;
+      req.user = {
+        userId: auth.userId,
+        role: jwtRole,
+        email: profile.email,
+        name: profile.name,
+      };
+      return next();
+    }
+
+    // Fallback: Check DB if role is not in JWT claims yet
     const user = await findOrBootstrapUser(profile);
 
     if (!user) {

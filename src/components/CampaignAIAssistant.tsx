@@ -23,15 +23,13 @@ export function CampaignAIAssistant({ onApplyData }: CampaignAIAssistantProps) {
   ]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
   
   const [pendingData, setPendingData] = useState<any>(null);
 
   useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-    }
-  }, [messages]);
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages, isLoading, pendingData]);
 
   const handleSend = async () => {
     if (!input.trim()) return;
@@ -99,7 +97,7 @@ export function CampaignAIAssistant({ onApplyData }: CampaignAIAssistantProps) {
         </div>
       </div>
 
-      <ScrollArea className="flex-1 p-4" ref={scrollRef}>
+      <ScrollArea className="flex-1 p-4">
         <div className="space-y-4 pb-4">
           {messages.map((msg, i) => (
             <div key={i} className={`flex gap-3 ${msg.role === 'user' ? 'flex-row-reverse' : ''}`}>
@@ -151,6 +149,7 @@ export function CampaignAIAssistant({ onApplyData }: CampaignAIAssistantProps) {
               </Button>
             </div>
           )}
+          <div ref={messagesEndRef} />
         </div>
       </ScrollArea>
 

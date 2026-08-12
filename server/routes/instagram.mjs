@@ -26,15 +26,16 @@ function getFrontendUrl(req) {
 }
 
 function getRedirectUri(req) {
+  // Always prioritize exact INSTAGRAM_REDIRECT_URI configured in .env and Meta Console
+  if (process.env.INSTAGRAM_REDIRECT_URI) {
+    return process.env.INSTAGRAM_REDIRECT_URI.trim();
+  }
   if (req) {
     const host = req.headers['x-forwarded-host'] || req.headers.host;
     if (host && (host.includes('localhost') || host.includes('127.0.0.1'))) {
       const protocol = req.headers['x-forwarded-proto'] || req.protocol || 'http';
       return `${protocol}://${host}/api/auth/instagram/callback`;
     }
-  }
-  if (process.env.INSTAGRAM_REDIRECT_URI) {
-    return process.env.INSTAGRAM_REDIRECT_URI;
   }
   return `${getFrontendUrl(req)}/api/auth/instagram/callback`;
 }
@@ -50,9 +51,12 @@ router.get('/auth/instagram/connect-url', requireAuth, (req, res) => {
       return res.status(401).json({ error: 'User context not found' });
     }
 
+    const returnUrl = typeof req.query?.returnUrl === 'string' ? req.query.returnUrl : '/profile';
+
     const stateToken = jwt.sign(
       {
         userId,
+        returnUrl,
         nonce: crypto.randomUUID(),
       },
       getSecret(),
@@ -63,9 +67,11 @@ router.get('/auth/instagram/connect-url', requireAuth, (req, res) => {
     const redirectUri = getRedirectUri(req);
     
     const authBaseUrl = process.env.INSTAGRAM_AUTH_URL || 'https://www.instagram.com/oauth/authorize';
-    const scopes = process.env.INSTAGRAM_SCOPES || 'instagram_business_basic,instagram_business_manage_messages,instagram_business_manage_comments,instagram_business_content_publish,instagram_business_manage_insights';
+    const scopes = process.env.INSTAGRAM_SCOPES || 'instagram_business_basic,instagram_business_manage_comments,instagram_business_manage_messages';
 
-    const url = `${authBaseUrl}?force_reauth=true&client_id=${encodeURIComponent(appId)}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=${encodeURIComponent(scopes)}&state=${encodeURIComponent(stateToken)}`;
+    console.log(`[Instagram Connect URL] App ID: ${appId} | Redirect URI: ${redirectUri}`);
+
+    const url = `${authBaseUrl}?enable_fb_login=0&force_authentication=1&client_id=${encodeURIComponent(appId)}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=${encodeURIComponent(scopes)}&state=${encodeURIComponent(stateToken)}`;
 
     return res.json({ url });
 
@@ -83,15 +89,26 @@ router.get('/auth/instagram/callback', async (req, res) => {
   const frontendUrl = getFrontendUrl(req);
   const { code, state, error, error_description } = req.query;
 
+  let returnPath = '/profile';
+
+  if (state) {
+    try {
+      const decodedState = jwt.verify(state, getSecret());
+      if (decodedState?.returnUrl) {
+        returnPath = decodedState.returnUrl;
+      }
+    } catch {}
+  }
+
   // 1. Handle user denied access or explicit OAuth error
   if (error || error_description) {
     console.warn('[Instagram Callback] OAuth access denied or error:', error, error_description);
-    return res.redirect(`${frontendUrl}/onboarding/creator?instagram=denied`);
+    return res.redirect(`${frontendUrl}${returnPath}?instagram=denied`);
   }
 
   // 2. Validate state parameter
   if (!state) {
-    return res.redirect(`${frontendUrl}/onboarding/creator?instagram=error&reason=invalid_state`);
+    return res.redirect(`${frontendUrl}${returnPath}?instagram=error&reason=invalid_state`);
   }
 
   let decoded;
@@ -99,16 +116,16 @@ router.get('/auth/instagram/callback', async (req, res) => {
     decoded = jwt.verify(state, getSecret());
   } catch (err) {
     console.error('[Instagram Callback] State verification failed:', err?.message);
-    return res.redirect(`${frontendUrl}/onboarding/creator?instagram=error&reason=invalid_state`);
+    return res.redirect(`${frontendUrl}${returnPath}?instagram=error&reason=invalid_state`);
   }
 
   const userId = decoded?.userId;
   if (!userId || !code) {
-    return res.redirect(`${frontendUrl}/onboarding/creator?instagram=error&reason=invalid_state`);
+    return res.redirect(`${frontendUrl}${returnPath}?instagram=error&reason=invalid_state`);
   }
 
   try {
-    const appId = process.env.INSTAGRAM_APP_ID || '4248222828762658';
+    const appId = process.env.INSTAGRAM_APP_ID || '1357507459683840';
     const appSecret = process.env.INSTAGRAM_APP_SECRET || '';
     const redirectUri = getRedirectUri(req);
 
@@ -197,7 +214,7 @@ router.get('/auth/instagram/callback', async (req, res) => {
 
     if (!profileData || !profileData.user_id) {
       console.error('[Instagram Callback] Profile fetch failed:', profileData);
-      return res.redirect(`${frontendUrl}/onboarding/creator?instagram=error&reason=profile_fetch_failed`);
+      return res.redirect(`${frontendUrl}${returnPath}?instagram=error&reason=profile_fetch_failed`);
     }
 
     // 6. Encrypt token and upsert into database
@@ -245,10 +262,10 @@ router.get('/auth/instagram/callback', async (req, res) => {
     );
 
     // 7. Successful redirect
-    return res.redirect(`${frontendUrl}/onboarding/creator?instagram=connected`);
+    return res.redirect(`${frontendUrl}${returnPath}?instagram=connected`);
   } catch (err) {
     console.error('[Instagram Callback Error]', err);
-    return res.redirect(`${frontendUrl}/onboarding/creator?instagram=error&reason=server_error`);
+    return res.redirect(`${frontendUrl}${returnPath}?instagram=error&reason=server_error`);
   }
 });
 
