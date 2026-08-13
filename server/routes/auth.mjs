@@ -84,6 +84,15 @@ router.get('/me', requireClerkAuth, async (req, res) => {
 
     let user = userResult.rows[0] || null;
 
+    const adminEmails = new Set(
+      String(process.env.CLERK_ADMIN_EMAILS || '')
+        .split(',')
+        .map((value) => value.trim().toLowerCase())
+        .filter(Boolean)
+    );
+
+    const isAdminByEmail = email && adminEmails.has(email.toLowerCase());
+
     if (user) {
       const shouldUpdateName =
         name &&
@@ -91,47 +100,40 @@ router.get('/me', requireClerkAuth, async (req, res) => {
         (!user.full_name || user.full_name === 'Crevio User' || user.full_name !== name);
 
       const shouldUpdateEmail = email && user.email !== email;
+      const shouldPromoteAdmin = isAdminByEmail && user.role !== 'admin';
 
-      if (shouldUpdateName || shouldUpdateEmail) {
+      if (shouldUpdateName || shouldUpdateEmail || shouldPromoteAdmin) {
         const updated = await query(
           `UPDATE users
            SET full_name = COALESCE($2, full_name),
                email = COALESCE($3, email),
+               role = CASE WHEN $4::boolean THEN 'admin' ELSE role END,
                updated_at = NOW()
            WHERE id = $1
            RETURNING id, full_name, email, role, onboarding_step, linkedin_linked, linkedin_data, onboarding_draft`,
-          [user.id, shouldUpdateName ? name : null, shouldUpdateEmail ? email : null]
+          [user.id, shouldUpdateName ? name : null, shouldUpdateEmail ? email : null, shouldPromoteAdmin]
         );
 
         user = updated.rows[0] || user;
       }
     }
 
-    // Bootstrap admin users from a controlled allowlist.
-    if (!user && email) {
-      const adminEmails = new Set(
-        String(process.env.CLERK_ADMIN_EMAILS || '')
-          .split(',')
-          .map((value) => value.trim().toLowerCase())
-          .filter(Boolean)
+    // Bootstrap admin users from a controlled allowlist if user record doesn't exist yet.
+    if (!user && email && isAdminByEmail) {
+      const inserted = await query(
+        `INSERT INTO users (id, full_name, email, role, is_active)
+         VALUES ($1, $2, $3, 'admin', TRUE)
+         ON CONFLICT (id) DO UPDATE SET
+           full_name = EXCLUDED.full_name,
+           email = EXCLUDED.email,
+           role = 'admin',
+           is_active = TRUE,
+           updated_at = NOW()
+         RETURNING id, full_name, email, role, onboarding_step`,
+        [userId, name, email]
       );
 
-      if (adminEmails.has(email.toLowerCase())) {
-        const inserted = await query(
-          `INSERT INTO users (id, full_name, email, role, is_active)
-           VALUES ($1, $2, $3, 'admin', TRUE)
-           ON CONFLICT (id) DO UPDATE SET
-             full_name = EXCLUDED.full_name,
-             email = EXCLUDED.email,
-             role = 'admin',
-             is_active = TRUE,
-             updated_at = NOW()
-           RETURNING id, full_name, email, role, onboarding_step`,
-          [userId, name, email]
-        );
-
-        user = inserted.rows[0] || null;
-      }
+      user = inserted.rows[0] || null;
     }
 
     if (!user) {
@@ -146,12 +148,28 @@ router.get('/me', requireClerkAuth, async (req, res) => {
       });
     }
 
+    const sessionClaims = req.authContext?.sessionClaims || {};
+    const clerkPublicRole = 
+      sessionClaims.metadata?.role || 
+      sessionClaims.public_metadata?.role || 
+      sessionClaims.role;
+
+    if (clerkPublicRole && ['admin', 'brand', 'creator'].includes(clerkPublicRole) && clerkPublicRole !== user.role) {
+      const updated = await query(
+        `UPDATE users SET role = $2, updated_at = NOW() WHERE id = $1 RETURNING id, full_name, email, role, onboarding_step, linkedin_linked, linkedin_data, onboarding_draft`,
+        [user.id, clerkPublicRole]
+      );
+      if (updated.rows[0]) {
+        user = updated.rows[0];
+      }
+    } else {
+      // Asynchronously ensure role is in Clerk publicMetadata if not present
+      void syncClerkPublicMetadata(user.id, user.role);
+    }
+
     const needsOnboarding = user.onboarding_step === null || user.onboarding_step > 0;
 
     console.log(`[Auth/me] DEBUG: role=${user.role}, step=${user.onboarding_step}, stepType=${typeof user.onboarding_step}, needsOnboarding=${needsOnboarding}`);
-
-    // Asynchronously ensure role is in Clerk publicMetadata
-    void syncClerkPublicMetadata(user.id, user.role);
 
     const response = {
       user: toApiUser(user),

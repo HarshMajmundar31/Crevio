@@ -30,7 +30,9 @@ function normalizeProfile(userId, sessionClaims = {}) {
   return { userId, email, name };
 }
 
-async function findOrBootstrapUser({ userId, email, name }) {
+async function findOrBootstrapUser({ userId, email, name }, sessionClaims = {}) {
+  const jwtRole = sessionClaims.metadata?.role || sessionClaims.public_metadata?.role || sessionClaims.role;
+
   const userResult = await query(
     `SELECT id, full_name, email, role 
      FROM users 
@@ -40,25 +42,39 @@ async function findOrBootstrapUser({ userId, email, name }) {
     [userId, email || null]
   );
 
-  if (userResult.rows[0]) {
-    return userResult.rows[0];
+  let existingUser = userResult.rows[0] || null;
+
+  const isAdminEmail = email && bootstrapAdminEmails.has(email.toLowerCase());
+  const targetRole = isAdminEmail || jwtRole === 'admin' ? 'admin' : jwtRole;
+
+  if (existingUser) {
+    if (targetRole && existingUser.role !== targetRole && ['admin', 'brand', 'creator'].includes(targetRole)) {
+      const updated = await query(
+        `UPDATE users SET role = $2, updated_at = NOW() WHERE id = $1 RETURNING id, full_name, email, role`,
+        [existingUser.id, targetRole]
+      );
+      return updated.rows[0] || existingUser;
+    }
+    return existingUser;
   }
 
-  if (!email || !bootstrapAdminEmails.has(email.toLowerCase())) {
+  if (!email && !targetRole) {
     return null;
   }
 
+  const roleToInsert = targetRole || 'creator';
+
   const inserted = await query(
     `INSERT INTO users (id, full_name, email, role, is_active)
-     VALUES ($1, $2, $3, 'admin', TRUE)
+     VALUES ($1, $2, $3, $4, TRUE)
      ON CONFLICT (id) DO UPDATE SET
        full_name = EXCLUDED.full_name,
        email = EXCLUDED.email,
-       role = 'admin',
+       role = $4,
        is_active = TRUE,
        updated_at = NOW()
      RETURNING id, full_name, email, role`,
-    [userId, name, email]
+    [userId, name, email, roleToInsert]
   );
 
   return inserted.rows[0] || null;
@@ -121,7 +137,7 @@ export async function requireAuth(req, res, next) {
     }
 
     // Fallback: Check DB if role is not in JWT claims yet
-    const user = await findOrBootstrapUser(profile);
+    const user = await findOrBootstrapUser(profile, auth.sessionClaims || {});
 
     if (!user) {
       return res.status(403).json({
