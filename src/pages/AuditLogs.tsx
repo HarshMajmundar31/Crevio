@@ -157,9 +157,10 @@ export default function AuditLogs() {
                   <span className="text-muted-foreground truncate block">{log.parentHash}</span>
                 </div>
               </div>
-            ))
-          )}
-        </div>
+            </div>
+          ))
+        )}
+      </div>
       </div>
     </DashboardLayout>
   );
