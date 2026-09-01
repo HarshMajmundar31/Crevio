@@ -31,11 +31,20 @@ export default function AdminDashboard() {
   const [creatorPercent, setCreatorPercent] = useState<number>(50);
   const [isSettling, setIsSettling] = useState(false);
 
+  // System metrics state
+  const [sysMetrics, setSysMetrics] = useState({ globalAvailablePool: 0, escrowLedgerCheck: 0, isBalanced: true });
+
   const fetchGlobalEscrows = async () => {
     try {
       setIsLoading(true);
       const res = await apiGetAdminEscrows();
       setEscrows(res.escrows);
+      
+      const { apiGetSystemMetrics } = await import('@/lib/api');
+      const metricsRes = await apiGetSystemMetrics();
+      if (metricsRes.metrics) {
+        setSysMetrics(metricsRes.metrics);
+      }
       
       // Auto-select first disputed contract if any
       const disputed = res.escrows.filter(e => e.status === 'disputed');
@@ -43,7 +52,7 @@ export default function AdminDashboard() {
         setSelectedDispute(disputed[0]);
       }
     } catch (err) {
-      console.error('Failed to load admin escrows:', err);
+      console.error('Failed to load admin dashboard data:', err);
     } finally {
       setIsLoading(false);
     }
@@ -124,7 +133,11 @@ export default function AdminDashboard() {
         <div className="glass-card p-4">
           <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">System Audit Health</p>
           <p className="text-2xl font-bold text-foreground mt-1 flex items-center gap-1">
-            <CheckCircle2 className="w-5 h-5 text-success inline" /> Optimal
+            {sysMetrics.isBalanced ? (
+              <><CheckCircle2 className="w-5 h-5 text-success inline" /> Optimal</>
+            ) : (
+              <><AlertTriangle className="w-5 h-5 text-warning inline" /> Alert</>
+            )}
           </p>
         </div>
       </div>
@@ -379,11 +392,13 @@ export default function AdminDashboard() {
               <div className="grid md:grid-cols-3 gap-4 mb-6">
                 <div className="bg-muted/40 p-4 rounded-xl">
                   <p className="text-xs text-muted-foreground">Global Available Pool</p>
-                  <p className="text-lg font-bold mt-1">₹4,25,000.00</p>
+                  <p className="text-lg font-bold mt-1">{formatAmount(sysMetrics.globalAvailablePool)}</p>
                 </div>
                 <div className="bg-muted/40 p-4 rounded-xl">
                   <p className="text-xs text-muted-foreground">Escrow Ledger Check</p>
-                  <p className="text-lg font-bold text-success mt-1">Balanced (0.00 offset)</p>
+                  <p className={`text-lg font-bold mt-1 ${sysMetrics.isBalanced ? 'text-success' : 'text-warning'}`}>
+                    {sysMetrics.isBalanced ? 'Balanced' : 'Unbalanced'} ({formatAmount(sysMetrics.escrowLedgerCheck)} locked)
+                  </p>
                 </div>
                 <div className="bg-muted/40 p-4 rounded-xl">
                   <p className="text-xs text-muted-foreground">Audit Signature Key</p>

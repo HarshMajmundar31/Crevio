@@ -637,6 +637,15 @@ export async function apiCreateDepositOrder(amount: number) {
   );
 }
 
+// ----- Admin Audit & Metrics -----
+export async function apiGetAuditLogs() {
+  return request<{ logs: any[] }>('/api/admin/audit-logs', 'GET');
+}
+
+export async function apiGetSystemMetrics() {
+  return request<{ metrics: { globalAvailablePool: number, escrowLedgerCheck: number, isBalanced: boolean } }>('/api/admin/system-metrics', 'GET');
+}
+
 export async function apiVerifyDepositPayment(payload: { razorpay_payment_id: string; razorpay_order_id: string; razorpay_signature: string; amount: number }) {
   return request<{ success: boolean; balance: number }>(
     '/api/payments/deposit/verify',

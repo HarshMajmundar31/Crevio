@@ -31,60 +31,32 @@ export default function AuditLogs() {
   const [search, setSearch] = useState('');
   const [filterType, setFilterType] = useState('ALL');
 
-  // Cryptographically Hash-Chained Mock Audit Log
-  const mockAuditLogs: AuditLogEntry[] = [
-    {
-      id: 'AUD-9910',
-      timestamp: '2026-07-27 14:28:10 UTC',
-      contractNumber: '#CR-9921',
-      eventType: 'ESCROW_FUNDED_AND_LOCKED',
-      actor: 'Brand Org Vault',
-      actorRole: 'BRAND',
-      sha256Hash: 'a8f9e0d1c2b3a4f5e6d7c8b9a0f1e2d3c4b5a6f7e8d9c0b1a2f3e4d5c6b7a8f9',
-      parentHash: '7e8d9c0b1a2f3e4d5c6b7a8f9a8f9e0d1c2b3a4f5e6d7c8b9a0f1e2d3c4b5a6f',
-      payloadSummary: 'Funded ₹15,00,000 INR to Crevio Multi-Sig Escrow Vault. Lock flag toggled to IMMUTABLE.',
-      verificationStatus: 'VERIFIED'
-    },
-    {
-      id: 'AUD-9909',
-      timestamp: '2026-07-27 12:15:44 UTC',
-      contractNumber: '#CR-9921',
-      eventType: 'SIGNED_CONTRACT_PDF_REUPLOADED',
-      actor: 'Sarah Beauty (@beauty_sarah)',
-      actorRole: 'CREATOR',
-      sha256Hash: '7e8d9c0b1a2f3e4d5c6b7a8f9a8f9e0d1c2b3a4f5e6d7c8b9a0f1e2d3c4b5a6f',
-      parentHash: '3c4b5a6f7e8d9c0b1a2f3e4d5c6b7a8f9a8f9e0d1c2b3a4f5e6d7c8b9a0f1e2d',
-      payloadSummary: 'Uploaded signed contract acceptance PDF. SHA-256 match confirmed against parsed terms.',
-      verificationStatus: 'VERIFIED'
-    },
-    {
-      id: 'AUD-9908',
-      timestamp: '2026-07-27 09:30:12 UTC',
-      contractNumber: '#CR-9910',
-      eventType: 'EVIDENCE_URL_VERIFIED',
-      actor: 'Crevio Compliance Crawler v2.4',
-      actorRole: 'CREVIO_ENGINE',
-      sha256Hash: '3c4b5a6f7e8d9c0b1a2f3e4d5c6b7a8f9a8f9e0d1c2b3a4f5e6d7c8b9a0f1e2d',
-      parentHash: '1a2f3e4d5c6b7a8f9a8f9e0d1c2b3a4f5e6d7c8b9a0f1e2d3c4b5a6f7e8d9c0b',
-      payloadSummary: 'Scraped YouTube Video ID acme_glow_review. Verified brand mention & disclosure tag.',
-      verificationStatus: 'VERIFIED'
-    },
-    {
-      id: 'AUD-9907',
-      timestamp: '2026-07-26 18:02:00 UTC',
-      contractNumber: '#CR-9880',
-      eventType: 'CONTRACT_PARSED_BY_AI',
-      actor: 'Crevio Ingestion Engine',
-      actorRole: 'CREVIO_ENGINE',
-      sha256Hash: '1a2f3e4d5c6b7a8f9a8f9e0d1c2b3a4f5e6d7c8b9a0f1e2d3c4b5a6f7e8d9c0b',
-      parentHash: '0000000000000000000000000000000000000000000000000000000000000000',
-      payloadSummary: 'Parsed 3 deliverables and 2 usage rights clauses with 98.4% confidence score.',
-      verificationStatus: 'VERIFIED'
-    }
-  ];
+  const [auditLogs, setAuditLogs] = useState<AuditLogEntry[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchLogs = async () => {
+      try {
+        setIsLoading(true);
+        const { apiGetAuditLogs } = await import('@/lib/api');
+        const res = await apiGetAuditLogs();
+        setAuditLogs(res.logs || []);
+      } catch (err) {
+        console.error('Failed to load audit logs:', err);
+        toast({
+          title: 'Error Loading Logs',
+          description: 'Could not retrieve cryptographic audit trail.',
+          variant: 'destructive',
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchLogs();
+  }, [toast]);
 
   const handleExportJson = () => {
-    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(mockAuditLogs, null, 2));
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(auditLogs, null, 2));
     const downloadAnchor = document.createElement('a');
     downloadAnchor.setAttribute("href", dataStr);
     downloadAnchor.setAttribute("download", `crevio_audit_trail_${Date.now()}.json`);
@@ -150,16 +122,19 @@ export default function AuditLogs() {
 
         {/* Audit Log Stream */}
         <div className="space-y-3">
-          {mockAuditLogs.map((log) => (
-            <div key={log.id} className="p-4 rounded-xl border border-border bg-card space-y-3 hover:border-border/80 transition-colors">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-border/40 pb-2.5">
-                <div className="flex items-center gap-2.5">
-                  <Badge variant="outline" className="font-mono text-[10px]">
-                    {log.id}
-                  </Badge>
-                  <span className="font-mono font-bold text-foreground text-xs">{log.contractNumber}</span>
-                  <span className="text-xs font-semibold text-primary">• {log.eventType}</span>
-                </div>
+          {isLoading ? (
+            <div className="text-center py-8 text-muted-foreground text-sm">Loading verifiable audit logs...</div>
+          ) : (
+            auditLogs.map((log) => (
+              <div key={log.id} className="p-4 rounded-xl border border-border bg-card space-y-3 hover:border-border/80 transition-colors">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-border/40 pb-2.5">
+                  <div className="flex items-center gap-2.5">
+                    <Badge variant="outline" className="font-mono text-[10px]">
+                      {log.id}
+                    </Badge>
+                    <span className="font-mono font-bold text-foreground text-xs">{log.contractNumber}</span>
+                    <span className="text-xs font-semibold text-primary">• {log.eventType}</span>
+                  </div>
 
                 <div className="flex items-center gap-2">
                   <Badge variant="outline" className="bg-emerald-500/10 text-emerald-500 border-emerald-500/30 text-[9px] font-mono gap-1">
@@ -182,8 +157,8 @@ export default function AuditLogs() {
                   <span className="text-muted-foreground truncate block">{log.parentHash}</span>
                 </div>
               </div>
-            </div>
-          ))}
+            ))
+          )}
         </div>
       </div>
     </DashboardLayout>

@@ -23,6 +23,7 @@ import userRoutes from './routes/users.mjs';
 import workspaceRoutes from './routes/workspaces.mjs';
 import dashboardRoutes from './routes/dashboard.mjs';
 import paymentRoutes from './routes/payments.mjs';
+import adminRoutes from './routes/admin.mjs';
 import instagramRoutes from './routes/instagram.mjs';
 
 
@@ -58,6 +59,7 @@ app.use('/api/workspaces', workspaceRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/v1/brand/dashboard', dashboardRoutes);
 app.use('/api/payments', paymentRoutes);
+app.use('/api/admin', adminRoutes);
 app.use('/api', instagramRoutes);
 
 
