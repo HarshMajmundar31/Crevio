@@ -69,11 +69,14 @@ import {
   Check,
   XCircle,
   HelpCircle,
-  Clock
+  Clock,
+  Instagram
 } from 'lucide-react';
 import { toast } from 'sonner';
+import InstagramAnalyticsDashboard from '@/components/InstagramAnalyticsDashboard';
 
-type AdminTab = 'overview' | 'campaigns' | 'contracts' | 'applications' | 'messages' | 'users' | 'escrows' | 'audits';
+type AdminTab = 'overview' | 'campaigns' | 'contracts' | 'applications' | 'messages' | 'users' | 'escrows' | 'audits' | 'instagram';
+
 
 export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState<AdminTab>('overview');
@@ -599,6 +602,7 @@ export default function AdminDashboard() {
       <div className="flex border-b border-muted/50 mb-6 gap-1 overflow-x-auto hide-scrollbar">
         {[
           { id: 'overview', label: 'Overview & Pulse', icon: Activity },
+          { id: 'instagram', label: '📸 Instagram Analytics', icon: Instagram },
           { id: 'campaigns', label: `Campaigns (${campaigns.length})`, icon: Briefcase },
           { id: 'contracts', label: `Contracts (${contracts.length})`, icon: FileText },
           { id: 'applications', label: `Applications (${applications.length})`, icon: CheckCircle2 },
@@ -1543,8 +1547,18 @@ export default function AdminDashboard() {
             </motion.div>
           )}
 
+          {/* ========================================== */}
+          {/* TAB 9: INSTAGRAM GRAPH API v25.0 ANALYTICS */}
+          {/* ========================================== */}
+          {activeTab === 'instagram' && (
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
+              <InstagramAnalyticsDashboard isAdminView={true} />
+            </motion.div>
+          )}
+
         </div>
       )}
+
 
       {/* ========================================== */}
       {/* MODAL: CREATE CAMPAIGN */}

@@ -734,8 +734,9 @@ export interface InstagramAccountResponse {
   needsReconnect?: boolean;
 }
 
-export async function apiGetInstagramConnectUrl(): Promise<{ url: string }> {
-  return request<{ url: string }>('/api/auth/instagram/connect-url', 'GET');
+export async function apiGetInstagramConnectUrl(returnUrl?: string): Promise<{ url: string }> {
+  const queryStr = returnUrl ? `?returnUrl=${encodeURIComponent(returnUrl)}` : '';
+  return request<{ url: string }>(`/api/auth/instagram/connect-url${queryStr}`, 'GET');
 }
 
 export async function apiGetInstagramAccount(): Promise<InstagramAccountResponse> {
@@ -749,7 +750,6 @@ export async function apiGetInstagramAccount(): Promise<InstagramAccountResponse
   }
 }
 
-
 export async function apiGetInstagramInsights(): Promise<{ available: boolean; reason?: string; metrics?: any[] }> {
   return request<{ available: boolean; reason?: string; metrics?: any[] }>('/api/social/instagram/insights', 'GET');
 }
@@ -757,6 +757,7 @@ export async function apiGetInstagramInsights(): Promise<{ available: boolean; r
 export async function apiDisconnectInstagram(): Promise<void> {
   return request<void>('/api/social/instagram/disconnect', 'DELETE');
 }
+
 
 export async function apiDirectJoinCampaign(campaignId: string): Promise<{ success: boolean; applicationId?: string; autoJoined?: boolean; alreadyJoined?: boolean; status?: string }> {
   return request<{ success: boolean; applicationId?: string; autoJoined?: boolean; alreadyJoined?: boolean; status?: string }>(
@@ -1260,8 +1261,101 @@ export async function apiAdminRefundEscrow(id: string) {
   return request<{ success: boolean; message: string }>(`/api/admin/escrows/${id}/refund`, 'POST');
 }
 
+// Instagram Graph API v25.0 Analytics Interfaces
+export interface InstagramProfile {
+  id: string;
+  username: string;
+  displayName?: string;
+  profilePictureUrl?: string | null;
+  accountType: string;
+  followersCount: number;
+  mediaCount: number;
+  biography?: string;
+  tokenExpiresAt?: string;
+  daysRemaining?: number;
+  needsReconnect?: boolean;
+}
 
+export interface InstagramKPIs {
+  followers: number;
+  followersGrowthPct?: number;
+  mediaCount: number;
+  reach30d: number;
+  reachGrowthPct?: number;
+  profileViews30d: number;
+  profileViewsGrowthPct?: number;
+  impressions30d: number;
+  avgEngagementRate: number;
+}
 
+export interface InstagramDailyTrend {
+  date: string;
+  reach: number;
+  impressions: number;
+  profileViews: number;
+}
 
+export interface InstagramAccountAnalyticsResponse {
+  success: boolean;
+  connected: boolean;
+  isDemoData?: boolean;
+  isLiveMeta?: boolean;
+  profile: InstagramProfile;
+  kpis: InstagramKPIs;
+  dailyTrends: InstagramDailyTrend[];
+}
 
+export interface InstagramPostAnalytics {
+  id: string;
+  caption: string;
+  mediaType: 'IMAGE' | 'VIDEO' | 'CAROUSEL_ALBUM' | 'REELS' | string;
+  mediaUrl: string;
+  thumbnailUrl: string;
+  permalink: string;
+  timestamp: string;
+  likeCount: number;
+  commentsCount: number;
+  reach: number;
+  impressions: number;
+  saved: number;
+  videoViews: number;
+  engagementRate: number;
+}
+
+export interface InstagramMediaAnalyticsSummary {
+  totalPostsAnalyzed: number;
+  totalLikes: number;
+  totalComments: number;
+  totalReach: number;
+  totalSaves: number;
+  totalVideoViews: number;
+  avgEngagementRate: number;
+}
+
+export interface InstagramMediaAnalyticsResponse {
+  success: boolean;
+  isLiveMeta?: boolean;
+  posts: InstagramPostAnalytics[];
+  summary: InstagramMediaAnalyticsSummary;
+}
+
+export async function apiGetInstagramAccountAnalytics(userId?: string) {
+  const queryStr = userId ? `?userId=${encodeURIComponent(userId)}` : '';
+  return request<InstagramAccountAnalyticsResponse>(`/api/social/instagram/account-analytics${queryStr}`, 'GET');
+}
+
+export async function apiGetInstagramMediaAnalytics(userId?: string) {
+  const queryStr = userId ? `?userId=${encodeURIComponent(userId)}` : '';
+  return request<InstagramMediaAnalyticsResponse>(`/api/social/instagram/media-analytics${queryStr}`, 'GET');
+}
+
+export async function apiExchangeInstagramToken(shortLivedToken: string, userId?: string) {
+  return request<{
+    success: boolean;
+    message: string;
+    account: any;
+    expiresInDays: number;
+    expiresAt: string;
+  }>('/api/social/instagram/exchange-token', 'POST', { shortLivedToken, userId });
+}
 
