@@ -73,7 +73,8 @@ export default function ContractParsingStudio() {
     setTimeout(() => {
       setIsParsing(false);
       setIsParsed(true);
-      const generatedLink = `https://app.crevio.io/invite/cr_${Math.floor(1000 + Math.random() * 9000)}_x8b`;
+      const origin = typeof window !== 'undefined' ? window.location.origin : 'https://app.crevio.io';
+      const generatedLink = `${origin}/invite/cr_${Math.floor(1000 + Math.random() * 9000)}_x8b`;
       setInviteLink(generatedLink);
       toast({
         title: 'Contract Successfully Parsed',

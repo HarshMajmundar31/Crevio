@@ -2,8 +2,8 @@ export const AUTH_TOKEN_KEY = 'crevio_auth_token';
 
 export function getApiBaseUrl(): string {
   const url = import.meta.env.VITE_API_URL;
-  if (url && typeof window !== 'undefined' && window.location.hostname === 'localhost') {
-    return url;
+  if (url) {
+    return url.replace(/\/+$/, '');
   }
   return '';
 }
@@ -126,6 +126,9 @@ export interface ApiCampaign {
   has_applied?: boolean;
   cover_image_url?: string | null;
   highlight_color?: string | null;
+  contract_file_name?: string | null;
+  contract_extracted_terms?: any | null;
+  contract_raw_text?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -174,6 +177,11 @@ export interface ApiCampaignApplication {
   reviewed_at?: string;
   withdrawn_at?: string;
   contract_id?: string;
+  signed_contract_path?: string;
+  signed_contract_name?: string;
+  signed_at?: string;
+  is_contract_locked?: boolean;
+  contract_locked_at?: string;
   created_at: string;
   updated_at: string;
 }
@@ -749,6 +757,228 @@ export async function apiGetInstagramInsights(): Promise<{ available: boolean; r
 export async function apiDisconnectInstagram(): Promise<void> {
   return request<void>('/api/social/instagram/disconnect', 'DELETE');
 }
+
+export async function apiDirectJoinCampaign(campaignId: string): Promise<{ success: boolean; applicationId?: string; autoJoined?: boolean; alreadyJoined?: boolean; status?: string }> {
+  return request<{ success: boolean; applicationId?: string; autoJoined?: boolean; alreadyJoined?: boolean; status?: string }>(
+    `/api/campaigns/${campaignId}/direct-join`,
+    'POST'
+  );
+}
+
+export async function apiUploadCreatorSignedContract(campaignId: string, file: File): Promise<any> {
+  const formData = new FormData();
+  formData.append('file', file);
+  return request<any>(`/api/campaigns/${campaignId}/upload-signed-contract`, 'POST', formData, true);
+}
+
+export interface ApiWorkingCampaign {
+  id: string;
+  brand_id: string;
+  brand_name?: string;
+  brand_email?: string;
+  title: string;
+  description: string;
+  platform: string;
+  goal?: string;
+  target_audience?: string;
+  deliverables_summary?: string;
+  timeline_summary?: string;
+  budget: number | string;
+  budget_min?: number | string;
+  budget_max?: number | string;
+  content_rights?: string;
+  deadline?: string;
+  campaign_status: string;
+  contract_file_name?: string;
+  contract_extracted_terms?: any;
+  cover_image_url?: string;
+  highlight_color?: string;
+  created_at?: string;
+  application_id?: string;
+  application_status?: string;
+  proposed_fee?: number | string;
+  signed_contract_name?: string;
+  signed_at?: string;
+  joined_at?: string;
+  contract_id?: string;
+  contract_status?: string;
+  total_deliverables?: number;
+  completed_deliverables?: number;
+  escrow_status?: string;
+  escrow_amount?: number | string;
+  participants?: Array<{
+    application_id: string;
+    creator_id: string;
+    creator_name: string;
+    creator_email?: string;
+    status: string;
+    proposed_fee: number;
+    signed_contract_name?: string;
+    signed_at?: string;
+    contract_id?: string;
+    contract_status?: string;
+  }>;
+  accepted_creators_count?: number;
+}
+
+export async function apiGetWorkingCampaigns(): Promise<{ campaigns: ApiWorkingCampaign[] }> {
+  return request<{ campaigns: ApiWorkingCampaign[] }>('/api/campaigns/working', 'GET');
+}
+
+export async function apiDownloadCampaignContract(campaignId: string, defaultFileName?: string): Promise<void> {
+  const token = await resolveAuthToken();
+  const headers: Record<string, string> = {};
+  if (token) {
+    headers.Authorization = `Bearer ${token}`;
+  }
+  const url = `${API_BASE_URL}/api/campaigns/${campaignId}/contract/download`;
+  const res = await fetch(url, { headers });
+  if (!res.ok) {
+    let errorMsg = 'Failed to download campaign contract';
+    try {
+      const errJson = await res.json();
+      errorMsg = errJson.error || errorMsg;
+    } catch {
+      const text = await res.text();
+      if (text) errorMsg = text;
+    }
+    throw new Error(errorMsg);
+  }
+  const blob = await res.blob();
+  const disposition = res.headers.get('Content-Disposition') || '';
+  const match = disposition.match(/filename="?([^"]+)"?/);
+  const fileName = match ? match[1] : (defaultFileName || 'campaign_contract.pdf');
+
+  const blobUrl = window.URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = blobUrl;
+  a.download = fileName;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  window.URL.revokeObjectURL(blobUrl);
+}
+
+export async function apiDownloadSignedContract(campaignId: string, creatorId?: string): Promise<void> {
+  const token = await resolveAuthToken();
+  const headers: Record<string, string> = {};
+  if (token) {
+    headers.Authorization = `Bearer ${token}`;
+  }
+  const url = `${API_BASE_URL}/api/campaigns/${campaignId}/signed-contract/download${creatorId ? `?creatorId=${encodeURIComponent(creatorId)}` : ''}`;
+  const res = await fetch(url, { headers });
+  if (!res.ok) {
+    let errorMsg = 'Failed to download signed contract';
+    try {
+      const errJson = await res.json();
+      errorMsg = errJson.error || errorMsg;
+    } catch {
+      const text = await res.text();
+      if (text) errorMsg = text;
+    }
+    throw new Error(errorMsg);
+  }
+  const blob = await res.blob();
+  const disposition = res.headers.get('Content-Disposition') || '';
+  const match = disposition.match(/filename="?([^"]+)"?/);
+  const fileName = match ? match[1] : 'signed_contract.pdf';
+
+  const blobUrl = window.URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = blobUrl;
+  a.download = fileName;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  window.URL.revokeObjectURL(blobUrl);
+}
+
+export async function apiLockCampaignContract(
+  campaignId: string,
+  payload?: { applicationId?: string; creatorId?: string }
+): Promise<{ success: boolean; is_contract_locked: boolean; contract_locked_at: string }> {
+  return request<{ success: boolean; is_contract_locked: boolean; contract_locked_at: string }>(
+    `/api/campaigns/${campaignId}/lock-contract`,
+    'POST',
+    payload || {}
+  );
+}
+
+export interface ApiCampaignMessage {
+  id: string;
+  campaign_id: string;
+  sender_id: string;
+  recipient_id?: string;
+  sender_role: 'creator' | 'brand' | 'admin';
+  message: string;
+  attachment_url?: string;
+  attachment_name?: string;
+  is_read: boolean;
+  created_at: string;
+  sender_name?: string;
+  sender_avatar?: string;
+}
+
+export async function apiGetCampaignMessages(campaignId: string): Promise<{ messages: ApiCampaignMessage[] }> {
+  return request<{ messages: ApiCampaignMessage[] }>(`/api/campaigns/${campaignId}/messages`, 'GET');
+}
+
+export async function apiSendCampaignMessage(
+  campaignId: string,
+  payload: { message: string; recipientId?: string; attachmentUrl?: string; attachmentName?: string }
+): Promise<{ message: ApiCampaignMessage }> {
+  return request<{ message: ApiCampaignMessage }>(`/api/campaigns/${campaignId}/messages`, 'POST', payload);
+}
+
+export interface ApiProofSubmission {
+  id: string;
+  campaign_id: string;
+  creator_id: string;
+  application_id?: string;
+  deliverable_title: string;
+  live_url: string;
+  description?: string;
+  attachment_path?: string;
+  attachment_name?: string;
+  status: 'pending' | 'approved' | 'revision_requested' | 'rejected';
+  brand_feedback?: string;
+  submitted_at: string;
+  reviewed_at?: string;
+  created_at: string;
+  creator_name?: string;
+  creator_avatar?: string;
+  creator_handle?: string;
+}
+
+export async function apiGetCampaignProofs(campaignId: string): Promise<{ submissions: ApiProofSubmission[] }> {
+  return request<{ submissions: ApiProofSubmission[] }>(`/api/campaigns/${campaignId}/proof-submissions`, 'GET');
+}
+
+export async function apiSubmitCampaignProof(
+  campaignId: string,
+  formData: FormData
+): Promise<{ submission: ApiProofSubmission }> {
+  return request<{ submission: ApiProofSubmission }>(
+    `/api/campaigns/${campaignId}/proof-submissions`,
+    'POST',
+    formData,
+    true
+  );
+}
+
+export async function apiReviewCampaignProof(
+  campaignId: string,
+  proofId: string,
+  payload: { status: 'approved' | 'revision_requested' | 'rejected'; brandFeedback?: string }
+): Promise<{ submission: ApiProofSubmission }> {
+  return request<{ submission: ApiProofSubmission }>(
+    `/api/campaigns/${campaignId}/proof-submissions/${proofId}/status`,
+    'PATCH',
+    payload
+  );
+}
+
+
 
 
 

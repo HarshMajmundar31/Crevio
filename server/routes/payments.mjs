@@ -172,7 +172,7 @@ router.post('/contracts/:id/verify-payment', requireAuth, requireRole('brand', '
       [contractId]
     );
 
-    // Bookkeeping: Subtract from Brand available play balance and credit their pending escrow balance
+    // Bookkeeping: Credit their pending escrow balance with the newly funded Razorpay external deposit
     let brandWalletRes = await query('SELECT * FROM user_wallets WHERE user_id = $1', [escrow.brand_id]);
     if (!brandWalletRes.rows[0]) {
       // Dynamic fallback create if not exists
@@ -188,14 +188,25 @@ router.post('/contracts/:id/verify-payment', requireAuth, requireRole('brand', '
     const brandWallet = brandWalletRes.rows[0];
     await query(
       `UPDATE user_wallets 
-       SET available_balance = available_balance - $2, 
-           pending_escrow_balance = pending_escrow_balance + $2, 
+       SET pending_escrow_balance = pending_escrow_balance + $2, 
            updated_at = NOW() 
        WHERE id = $1`,
       [brandWallet.id, escrow.amount]
     );
 
-    // Record Ledger Debit Row
+    // Record Ledger Deposit & Escrow Locking Rows
+    await query(
+      `INSERT INTO wallet_transactions (id, wallet_id, amount, txn_type, status, description, reference_escrow_id)
+       VALUES ($1, $2, $3, 'deposit', 'completed', $4, $5)`,
+      [
+        createId('txn'), 
+        brandWallet.id, 
+        escrow.amount, 
+        `Razorpay Deposit (${razorpay_payment_id}) for Contract ${contractId}`, 
+        escrow.id
+      ]
+    );
+
     await query(
       `INSERT INTO wallet_transactions (id, wallet_id, amount, txn_type, status, description, reference_escrow_id)
        VALUES ($1, $2, $3, 'escrow_debit', 'completed', $4, $5)`,
@@ -550,7 +561,7 @@ router.post('/campaigns/:id/verify-payment', requireAuth, requireRole('brand', '
 
     const budget = Number(campaign.budget || campaign.budget_max || campaign.budget_min || 10000);
 
-    // Bookkeeping: Subtract from Brand available play balance and credit their pending escrow balance
+    // Bookkeeping: Credit their pending escrow balance with the newly funded Razorpay external deposit
     let brandWalletRes = await query('SELECT * FROM user_wallets WHERE user_id = $1', [campaign.brand_id]);
     if (!brandWalletRes.rows[0]) {
       const walletId = createId('wal');
@@ -565,14 +576,24 @@ router.post('/campaigns/:id/verify-payment', requireAuth, requireRole('brand', '
     const brandWallet = brandWalletRes.rows[0];
     await query(
       `UPDATE user_wallets 
-       SET available_balance = available_balance - $2, 
-           pending_escrow_balance = pending_escrow_balance + $2, 
+       SET pending_escrow_balance = pending_escrow_balance + $2, 
            updated_at = NOW() 
        WHERE id = $1`,
       [brandWallet.id, budget]
     );
 
-    // Record Ledger Debit Row
+    // Record Ledger Deposit & Escrow Locking Rows
+    await query(
+      `INSERT INTO wallet_transactions (id, wallet_id, amount, txn_type, status, description)
+       VALUES ($1, $2, $3, 'deposit', 'completed', $4)`,
+      [
+        createId('txn'), 
+        brandWallet.id, 
+        budget, 
+        `Razorpay Deposit (${razorpay_payment_id}) for Campaign: ${campaign.title}`
+      ]
+    );
+
     await query(
       `INSERT INTO wallet_transactions (id, wallet_id, amount, txn_type, status, description)
        VALUES ($1, $2, $3, 'escrow_debit', 'completed', $4)`,
@@ -580,7 +601,7 @@ router.post('/campaigns/:id/verify-payment', requireAuth, requireRole('brand', '
         createId('txn'), 
         brandWallet.id, 
         -budget, 
-        `Campaign Budget Secured: ${campaign.title} Published and Active`
+        `Campaign Budget Secured in Escrow: ${campaign.title} Published and Active`
       ]
     );
 

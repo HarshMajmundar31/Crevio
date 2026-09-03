@@ -296,27 +296,43 @@ export default function Applications() {
                     />
                   </div>
 
-                  <div className="flex flex-wrap gap-2 pt-1">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      disabled={savingId === application.id}
-                      onClick={() => void saveNegotiationFields(application)}
-                    >
-                      Save Terms
-                    </Button>
-                    <Button size="sm" variant="outline" disabled={savingId === application.id} onClick={() => void transitionStatus(application, 'shortlisted')}>
-                      Shortlist
-                    </Button>
-                    <Button size="sm" variant="outline" disabled={savingId === application.id} onClick={() => void transitionStatus(application, 'interviewing')}>
-                      Interviewing
-                    </Button>
-                    <Button size="sm" disabled={savingId === application.id} onClick={() => void transitionStatus(application, 'approved')}>
-                      Approve
-                    </Button>
-                    <Button size="sm" variant="destructive" disabled={savingId === application.id} onClick={() => void transitionStatus(application, 'rejected')}>
-                      Reject
-                    </Button>
+                  <div className="flex flex-wrap gap-2 pt-1 items-center">
+                    {application.status !== 'approved' && application.status !== 'rejected' ? (
+                      <>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          disabled={savingId === application.id}
+                          onClick={() => void saveNegotiationFields(application)}
+                        >
+                          Save Terms
+                        </Button>
+                        {application.status === 'submitted' && (
+                          <Button size="sm" variant="outline" disabled={savingId === application.id} onClick={() => void transitionStatus(application, 'shortlisted')}>
+                            Shortlist
+                          </Button>
+                        )}
+                        {(application.status === 'submitted' || application.status === 'shortlisted') && (
+                          <Button size="sm" variant="outline" disabled={savingId === application.id} onClick={() => void transitionStatus(application, 'interviewing')}>
+                            Interviewing
+                          </Button>
+                        )}
+                        <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold" disabled={savingId === application.id} onClick={() => void transitionStatus(application, 'approved')}>
+                          Approve
+                        </Button>
+                        <Button size="sm" variant="destructive" disabled={savingId === application.id} onClick={() => void transitionStatus(application, 'rejected')}>
+                          Reject
+                        </Button>
+                      </>
+                    ) : application.status === 'approved' ? (
+                      <span className="text-xs font-semibold text-emerald-400 bg-emerald-950/40 border border-emerald-500/30 px-3 py-1.5 rounded-lg flex items-center gap-1.5">
+                        ✓ Creator Approved & Active
+                      </span>
+                    ) : (
+                      <span className="text-xs font-semibold text-rose-400 bg-rose-950/40 border border-rose-500/30 px-3 py-1.5 rounded-lg">
+                        Application Rejected
+                      </span>
+                    )}
 
                     {application.status === 'approved' && !application.contract_id && (
                       <Button

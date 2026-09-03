@@ -5,7 +5,7 @@ import DashboardLayout from '@/components/DashboardLayout';
 import ContractStatusBadge from '@/components/ContractStatusBadge';
 import { deleteCampaign, getCampaigns, type ApiCampaign } from '@/lib/api';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Calendar, IndianRupee, Tag, ArrowUpRight, Users, Search, Filter, Trash2 } from 'lucide-react';
+import { Calendar, IndianRupee, Tag, ArrowUpRight, Users, Search, Filter, Trash2, Activity } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useEffect, useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
@@ -106,6 +106,15 @@ export default function Campaigns() {
             />
           </div>
 
+          <Button 
+            variant="outline" 
+            size="sm" 
+            className="text-xs font-semibold gap-1.5 border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10" 
+            onClick={() => navigate('/campaigns/working')}
+          >
+            <Activity className="w-3.5 h-3.5" /> Working Campaigns
+          </Button>
+
           <Button variant="outline" size="sm" className="text-xs" onClick={() => setShowFilters((prev) => !prev)}>
             <Filter className="w-3 h-3 mr-1.5" /> Filter
           </Button>
@@ -195,9 +204,16 @@ export default function Campaigns() {
                 <ContractStatusBadge status={campaign.status} />
               </div>
               <div className="absolute top-3 right-3">
-                <div className="bg-background/80 backdrop-blur-md px-2 py-1 rounded-md border border-white/10 text-xs font-semibold flex items-center gap-1 shadow-sm text-foreground">
-                  <IndianRupee className="w-3 h-3 text-emerald-500" />
-                  ₹{Number(campaign.budget).toLocaleString()} Prize Pool
+                <div className="bg-background/90 backdrop-blur-md px-2.5 py-1 rounded-md border border-emerald-500/30 text-xs font-bold flex flex-col items-end shadow-md text-foreground">
+                  <div className="flex items-center gap-1 text-emerald-500 font-extrabold">
+                    <IndianRupee className="w-3.5 h-3.5" />
+                    <span>₹{Number(campaign.budget).toLocaleString()}</span>
+                  </div>
+                  {campaign.status === 'active' && (
+                    <span className="text-[9px] text-emerald-600 dark:text-emerald-400 font-semibold leading-tight">
+                      Funds Submitted (Escrow)
+                    </span>
+                  )}
                 </div>
               </div>
               

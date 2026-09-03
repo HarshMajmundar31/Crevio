@@ -1,10 +1,15 @@
 import { Router } from 'express';
+import fs from 'node:fs';
+import path from 'node:path';
+import multer from 'multer';
 import { query } from '../lib/db.mjs';
 import { createId } from '../lib/ids.mjs';
 import { requireAuth, requireRole } from '../middleware/require-auth.mjs';
+import { broadcastEvent } from '../lib/socket.mjs';
 import OpenAI from 'openai';
 
 const router = Router();
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 15 * 1024 * 1024 } });
 
 let openaiClient = null;
 
@@ -200,6 +205,14 @@ router.get('/', requireAuth, async (req, res) => {
   if (isCreator) {
     params.push(req.user.userId);
     creatorIdParamIndex = params.length;
+    // Auto-remove accepted/working campaigns from browse view so they shift to working campaigns
+    conditions.push(`NOT EXISTS (
+      SELECT 1
+      FROM campaign_applications ca
+      WHERE ca.campaign_id = c.id
+        AND ca.creator_id = $${creatorIdParamIndex}
+        AND ca.status IN ('approved', 'accepted', 'active')
+    )`);
   }
 
   if (isBrand) {
@@ -274,6 +287,121 @@ router.get('/', requireAuth, async (req, res) => {
   return res.json({ campaigns: sanitizedCampaigns });
 });
 
+// GET /api/campaigns/working - Working & accepted campaigns for creators, brands, and admins
+router.get('/working', requireAuth, async (req, res) => {
+  const isCreator = req.user.role === 'creator';
+  const isBrand = req.user.role === 'brand';
+
+  try {
+    if (isCreator) {
+      const result = await query(
+        `SELECT c.id, c.brand_id, u.full_name AS brand_name, u.email AS brand_email,
+                c.title, c.description, c.platform, c.goal, c.target_audience,
+                c.deliverables_summary, c.timeline_summary, c.budget, c.budget_min, c.budget_max,
+                c.content_rights, c.deadline, c.status AS campaign_status,
+                c.contract_file_name, c.contract_extracted_terms, c.cover_image_url, c.highlight_color,
+                ca.id AS application_id, ca.status AS application_status, ca.proposed_fee,
+                ca.signed_contract_name, ca.signed_at, ca.created_at AS joined_at,
+                ct.id AS contract_id, ct.status AS contract_status,
+                COALESCE(deliv_stats.total_deliverables, 0)::int AS total_deliverables,
+                COALESCE(deliv_stats.completed_deliverables, 0)::int AS completed_deliverables,
+                COALESCE(esc.status, 'held') AS escrow_status,
+                COALESCE(esc.amount, ca.proposed_fee, c.budget) AS escrow_amount
+         FROM campaign_applications ca
+         JOIN campaigns c ON c.id = ca.campaign_id
+         JOIN users u ON u.id = c.brand_id
+         LEFT JOIN contracts ct ON (ct.campaign_id = c.id AND ct.creator_id = ca.creator_id)
+         LEFT JOIN escrow_holdings esc ON (esc.campaign_id = c.id OR esc.contract_id = ct.id)
+         LEFT JOIN (
+           SELECT cd.contract_id,
+                  COUNT(*) AS total_deliverables,
+                  COUNT(*) FILTER (WHERE cd.status IN ('approved', 'completed')) AS completed_deliverables
+           FROM contract_deliverables cd
+           GROUP BY cd.contract_id
+         ) deliv_stats ON deliv_stats.contract_id = ct.id
+         WHERE ca.creator_id = $1
+           AND ca.status IN ('approved', 'accepted', 'shortlisted', 'active')
+         ORDER BY ca.created_at DESC`,
+        [req.user.userId]
+      );
+
+      const workingCampaigns = result.rows.map(c => ({
+        ...c,
+        brand_name: (!c.brand_name || c.brand_name.includes('ACEMS')) ? 'Brand Partner' : c.brand_name
+      }));
+
+      return res.json({ campaigns: workingCampaigns });
+    } else if (isBrand) {
+      const result = await query(
+        `SELECT c.id, c.brand_id, c.title, c.description, c.platform, c.goal,
+                c.target_audience, c.deliverables_summary, c.timeline_summary,
+                c.budget, c.budget_min, c.budget_max, c.content_rights, c.deadline,
+                c.status AS campaign_status, c.contract_file_name, c.contract_extracted_terms,
+                c.cover_image_url, c.highlight_color, c.created_at,
+                COALESCE(esc.status, 'held') AS escrow_status,
+                COALESCE(esc.amount, c.budget) AS escrow_amount,
+                COALESCE(
+                  json_agg(
+                    json_build_object(
+                      'application_id', ca.id,
+                      'creator_id', ca.creator_id,
+                      'creator_name', cr.full_name,
+                      'creator_email', cr.email,
+                      'status', ca.status,
+                      'proposed_fee', ca.proposed_fee,
+                      'signed_contract_name', ca.signed_contract_name,
+                      'signed_at', ca.signed_at,
+                      'contract_id', ct.id,
+                      'contract_status', ct.status
+                    )
+                  ) FILTER (WHERE ca.id IS NOT NULL), '[]'::json
+                ) AS participants,
+                COUNT(ca.id)::int AS accepted_creators_count
+         FROM campaigns c
+         JOIN campaign_applications ca ON ca.campaign_id = c.id AND ca.status IN ('approved', 'accepted', 'shortlisted', 'active')
+         JOIN users cr ON cr.id = ca.creator_id
+         LEFT JOIN contracts ct ON (ct.campaign_id = c.id AND ct.creator_id = ca.creator_id)
+         LEFT JOIN escrow_holdings esc ON (esc.campaign_id = c.id)
+         WHERE c.brand_id = $1
+         GROUP BY c.id, esc.status, esc.amount
+         ORDER BY c.created_at DESC`,
+        [req.user.userId]
+      );
+
+      return res.json({ campaigns: result.rows });
+    } else {
+      // Admin
+      const result = await query(
+        `SELECT c.id, c.brand_id, u.full_name AS brand_name, c.title, c.description, c.platform, c.goal,
+                c.budget, c.deadline, c.status AS campaign_status, c.created_at,
+                COALESCE(
+                  json_agg(
+                    json_build_object(
+                      'application_id', ca.id,
+                      'creator_id', ca.creator_id,
+                      'creator_name', cr.full_name,
+                      'status', ca.status,
+                      'proposed_fee', ca.proposed_fee
+                    )
+                  ) FILTER (WHERE ca.id IS NOT NULL), '[]'::json
+                ) AS participants,
+                COUNT(ca.id)::int AS accepted_creators_count
+         FROM campaigns c
+         JOIN users u ON u.id = c.brand_id
+         JOIN campaign_applications ca ON ca.campaign_id = c.id AND ca.status IN ('approved', 'accepted', 'shortlisted', 'active')
+         JOIN users cr ON cr.id = ca.creator_id
+         GROUP BY c.id, u.full_name
+         ORDER BY c.created_at DESC`
+      );
+
+      return res.json({ campaigns: result.rows });
+    }
+  } catch (error) {
+    console.error('Error loading working campaigns:', error);
+    return res.status(500).json({ error: 'Failed to load working campaigns' });
+  }
+});
+
 router.get('/:id', requireAuth, async (req, res) => {
   const campaignId = req.params.id;
 
@@ -282,7 +410,12 @@ router.get('/:id', requireAuth, async (req, res) => {
             c.goal, c.target_audience, c.deliverables_summary, c.timeline_summary,
             c.budget, c.budget_min, c.budget_max, c.content_rights,
             c.deadline, c.status, c.created_at, c.updated_at, c.cover_image_url, c.highlight_color,
-            COALESCE(reqs.requirements, '[]'::json) AS requirements
+            c.contract_file_name, c.contract_extracted_terms, c.contract_raw_text,
+            COALESCE(reqs.requirements, '[]'::json) AS requirements,
+            COALESCE(esc.status, CASE WHEN c.status = 'active' THEN 'held' ELSE 'unfunded' END) AS escrow_status,
+            COALESCE(esc.amount, c.budget) AS escrow_amount,
+            esc.created_at AS escrow_funded_at,
+            esc.razorpay_payment_id AS escrow_payment_ref
      FROM campaigns c
      JOIN users u ON u.id = c.brand_id
      LEFT JOIN (
@@ -291,6 +424,7 @@ router.get('/:id', requireAuth, async (req, res) => {
        FROM campaign_requirements
        GROUP BY campaign_id
      ) reqs ON reqs.campaign_id = c.id
+     LEFT JOIN escrow_holdings esc ON esc.campaign_id = c.id
      WHERE c.id = $1`,
     [campaignId]
   );
@@ -310,6 +444,621 @@ router.get('/:id', requireAuth, async (req, res) => {
   }
 
   return res.json({ campaign });
+});
+
+// GET /api/campaigns/:id/contract/download - Download campaign contract file
+router.get('/:id/contract/download', requireAuth, async (req, res) => {
+  const campaignId = req.params.id;
+
+  const result = await query(
+    `SELECT id, brand_id, title, status, contract_file_name, contract_file_path, contract_file_mime, contract_file_data, contract_raw_text
+     FROM campaigns
+     WHERE id = $1`,
+    [campaignId]
+  );
+
+  const campaign = result.rows[0];
+  if (!campaign) {
+    return res.status(404).json({ error: 'Campaign not found' });
+  }
+
+  const fileName = campaign.contract_file_name || `${(campaign.title || 'Campaign').replace(/[^a-zA-Z0-9_-]/g, '_')}_Contract.pdf`;
+  const mimeType = campaign.contract_file_mime || 'application/pdf';
+
+  // 1. Try file path on disk
+  if (campaign.contract_file_path && fs.existsSync(campaign.contract_file_path)) {
+    res.setHeader('Content-Type', mimeType);
+    res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+    return res.sendFile(path.resolve(campaign.contract_file_path));
+  }
+
+  // 2. Try base64 stored file data
+  if (campaign.contract_file_data) {
+    const buffer = Buffer.from(campaign.contract_file_data, 'base64');
+    res.setHeader('Content-Type', mimeType);
+    res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+    res.setHeader('Content-Length', buffer.length);
+    return res.send(buffer);
+  }
+
+  // 3. Fallback to sample open campaign contract template if exists
+  const templatePdf = path.join(process.cwd(), 'Contract', 'Content_Creator_Contract_Open_Campaign.pdf');
+  if (fs.existsSync(templatePdf)) {
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="${fileName.endsWith('.pdf') ? fileName : `${fileName}.pdf`}"`);
+    return res.sendFile(templatePdf);
+  }
+
+  // 4. Fallback to raw text file
+  if (campaign.contract_raw_text) {
+    res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="${fileName.replace(/\.pdf$/i, '')}.txt"`);
+    return res.send(campaign.contract_raw_text);
+  }
+
+  return res.status(404).json({ error: 'No contract document attached to this campaign' });
+});
+
+// POST /api/campaigns/:id/upload-signed-contract - Creator uploads signed contract
+router.post('/:id/upload-signed-contract', requireAuth, requireRole('creator'), upload.single('file'), async (req, res) => {
+  const campaignId = req.params.id;
+
+  if (!req.file) {
+    return res.status(400).json({ error: 'Signed contract file is required (multipart field: file)' });
+  }
+
+  const appResult = await query(
+    'SELECT id, brand_id, status FROM campaign_applications WHERE campaign_id = $1 AND creator_id = $2',
+    [campaignId, req.user.userId]
+  );
+  let application = appResult.rows[0];
+
+  const uploadsDir = path.join(process.cwd(), 'uploads', 'signed_contracts');
+  fs.mkdirSync(uploadsDir, { recursive: true });
+  const sanitizedName = (req.file.originalname || 'signed_contract.pdf').replace(/[^a-zA-Z0-9._-]/g, '_');
+  const diskFileName = `${campaignId}_${req.user.userId}_${Date.now()}_${sanitizedName}`;
+  const filePath = path.join(uploadsDir, diskFileName);
+  fs.writeFileSync(filePath, req.file.buffer);
+
+  let brandId = null;
+
+  if (application) {
+    brandId = application.brand_id;
+    await query(
+      `UPDATE campaign_applications
+       SET signed_contract_path = $2,
+           signed_contract_name = $3,
+           signed_at = NOW(),
+           updated_at = NOW()
+       WHERE id = $1`,
+      [application.id, filePath, req.file.originalname]
+    );
+  } else {
+    // If application row didn't exist yet, create it
+    const campResult = await query('SELECT brand_id, budget, budget_min FROM campaigns WHERE id = $1', [campaignId]);
+    const camp = campResult.rows[0];
+    brandId = camp ? camp.brand_id : null;
+    const appId = createId('app');
+    const fee = Number(camp?.budget_min || camp?.budget || 0);
+    await query(
+      `INSERT INTO campaign_applications (
+         id, campaign_id, creator_id, brand_id, pitch_message, platform_links,
+         audience_location, audience_age_band, audience_niche, engagement_snapshot,
+         past_work_links, proposed_deliverables, proposed_fee, proposed_payment_model,
+         earliest_start_date, availability_notes, compliance_agreed, status,
+         audience_fit_score, engagement_quality_score, content_quality_score,
+         reliability_score, budget_fit_score, fit_score,
+         signed_contract_path, signed_contract_name, signed_at
+       )
+       VALUES (
+         $1, $2, $3, $4, 'Signed contract uploaded directly.', '[]'::jsonb,
+         'Global', '18-34', 'Content Creator', 'Direct Verified',
+         '[]'::jsonb, 'Master Contract Deliverables', $5, 'Flat Fee Escrow',
+         CURRENT_DATE, 'Available Immediately', true, 'approved',
+         85, 85, 85, 85, 85, 85,
+         $6, $7, NOW()
+       )`,
+      [
+        appId,
+        campaignId,
+        req.user.userId,
+        brandId,
+        fee,
+        filePath,
+        req.file.originalname
+      ]
+    );
+  }
+
+  if (brandId) {
+    // Send notification to brand without unsupported columns
+    const notifId = createId('notif');
+    const title = 'Creator Signed & Uploaded Contract 📄';
+    const message = `A creator has uploaded their signed contract for campaign ${campaignId}. Review and lock the contract to begin execution.`;
+    await query(
+      `INSERT INTO notifications (id, user_id, title, message)
+       VALUES ($1, $2, $3, $4)`,
+      [notifId, brandId, title, message]
+    );
+
+    broadcastEvent('notification', {
+      title,
+      message,
+      userId: brandId,
+      timestamp: new Date().toISOString()
+    });
+  }
+
+  broadcastEvent('campaign:contract_uploaded', {
+    campaignId,
+    creatorId: req.user.userId,
+    fileName: req.file.originalname,
+    timestamp: new Date().toISOString()
+  });
+
+  return res.json({
+    success: true,
+    fileName: req.file.originalname,
+    filePath,
+    signedAt: new Date().toISOString()
+  });
+});
+
+// GET /api/campaigns/:id/signed-contract/download - Download creator's signed contract
+router.get('/:id/signed-contract/download', requireAuth, async (req, res) => {
+  const campaignId = req.params.id;
+
+  let querySql = 'SELECT signed_contract_path, signed_contract_name FROM campaign_applications WHERE campaign_id = $1';
+  const queryParams = [campaignId];
+
+  if (req.user.role === 'creator') {
+    querySql += ' AND creator_id = $2';
+    queryParams.push(req.user.userId);
+  } else if (req.query.creatorId) {
+    querySql += ' AND (creator_id = $2 OR id = $2)';
+    queryParams.push(req.query.creatorId);
+  } else {
+    querySql += ' AND signed_contract_path IS NOT NULL ORDER BY signed_at DESC LIMIT 1';
+  }
+
+  const result = await query(querySql, queryParams);
+  const app = result.rows[0];
+
+  if (!app || !app.signed_contract_path || !fs.existsSync(app.signed_contract_path)) {
+    return res.status(404).json({ error: 'Signed contract file not found or not yet uploaded' });
+  }
+
+  const fileName = app.signed_contract_name || 'signed_contract.pdf';
+  res.setHeader('Content-Type', 'application/pdf');
+  res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+  return res.sendFile(path.resolve(app.signed_contract_path));
+});
+
+// POST /api/campaigns/:id/lock-contract - Brand or Admin locks the contract
+router.post('/:id/lock-contract', requireAuth, async (req, res) => {
+  if (req.user.role !== 'brand' && req.user.role !== 'admin') {
+    return res.status(403).json({ error: 'Only brand or admin can lock the contract' });
+  }
+
+  const campaignId = req.params.id;
+  const { applicationId, creatorId } = req.body || {};
+
+  let targetAppQuery = 'SELECT id, creator_id, brand_id FROM campaign_applications WHERE campaign_id = $1';
+  const targetParams = [campaignId];
+
+  if (applicationId) {
+    targetAppQuery += ' AND id = $2';
+    targetParams.push(applicationId);
+  } else if (creatorId) {
+    targetAppQuery += ' AND creator_id = $2';
+    targetParams.push(creatorId);
+  }
+
+  const apps = await query(targetAppQuery, targetParams);
+  if (!apps.rows.length) {
+    return res.status(404).json({ error: 'No matching application found to lock' });
+  }
+
+  for (const app of apps.rows) {
+    await query(
+      `UPDATE campaign_applications
+       SET is_contract_locked = TRUE,
+           contract_locked_at = NOW(),
+           status = CASE WHEN status IN ('submitted', 'shortlisted', 'interviewing') THEN 'approved' ELSE status END,
+           updated_at = NOW()
+       WHERE id = $1`,
+      [app.id]
+    );
+
+    // Also update contract if linked
+    await query(
+      `UPDATE contracts SET status = 'active', updated_at = NOW() WHERE campaign_id = $1`,
+      [campaignId]
+    ).catch(() => {});
+
+    // Notify creator
+    const notifId = createId('notif');
+    const title = 'Contract Approved & Locked! 🔒';
+    const message = `Your signed contract for campaign ${campaignId} has been approved and locked. You can now start working on deliverables and submit proof!`;
+    await query(
+      `INSERT INTO notifications (id, user_id, title, message)
+       VALUES ($1, $2, $3, $4)`,
+      [notifId, app.creator_id, title, message]
+    );
+
+    broadcastEvent('notification', {
+      title,
+      message,
+      userId: app.creator_id,
+      timestamp: new Date().toISOString()
+    });
+  }
+
+  broadcastEvent('campaign:contract_locked', {
+    campaignId,
+    lockedBy: req.user.userId,
+    timestamp: new Date().toISOString()
+  });
+
+  return res.json({
+    success: true,
+    is_contract_locked: true,
+    contract_locked_at: new Date().toISOString()
+  });
+});
+
+// GET /api/campaigns/:id/messages - Get campaign chat messages
+router.get('/:id/messages', requireAuth, async (req, res) => {
+  const campaignId = req.params.id;
+
+  const result = await query(
+    `SELECT m.id, m.campaign_id, m.sender_id, m.recipient_id, m.sender_role,
+            m.message, m.attachment_url, m.attachment_name, m.created_at,
+            COALESCE(u.full_name, 'Participant') AS sender_name,
+            u.avatar_url AS sender_avatar
+     FROM campaign_messages m
+     LEFT JOIN users u ON u.id = m.sender_id
+     WHERE m.campaign_id = $1
+     ORDER BY m.created_at ASC`,
+    [campaignId]
+  );
+
+  return res.json({ messages: result.rows });
+});
+
+// POST /api/campaigns/:id/messages - Send campaign chat message
+router.post('/:id/messages', requireAuth, async (req, res) => {
+  const campaignId = req.params.id;
+  const { message, recipientId, attachmentUrl, attachmentName } = req.body || {};
+
+  if (!message || !message.trim()) {
+    return res.status(400).json({ error: 'Message cannot be empty' });
+  }
+
+  const campResult = await query('SELECT id, brand_id, title FROM campaigns WHERE id = $1', [campaignId]);
+  const campaign = campResult.rows[0];
+  if (!campaign) {
+    return res.status(404).json({ error: 'Campaign not found' });
+  }
+
+  const targetRecipientId = recipientId || (req.user.role === 'creator' ? campaign.brand_id : null);
+
+  const msgId = createId('msg');
+  const insertResult = await query(
+    `INSERT INTO campaign_messages (
+       id, campaign_id, sender_id, recipient_id, sender_role,
+       message, attachment_url, attachment_name
+     )
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+     RETURNING *`,
+    [
+      msgId,
+      campaignId,
+      req.user.userId,
+      targetRecipientId,
+      req.user.role,
+      message.trim(),
+      attachmentUrl || null,
+      attachmentName || null
+    ]
+  );
+
+  const created = insertResult.rows[0];
+  const userResult = await query('SELECT full_name, avatar_url FROM users WHERE id = $1', [req.user.userId]);
+  const user = userResult.rows[0] || {};
+  created.sender_name = user.full_name || 'Participant';
+  created.sender_avatar = user.avatar_url || null;
+
+  if (targetRecipientId) {
+    const notifId = createId('notif');
+    await query(
+      `INSERT INTO notifications (id, user_id, title, message)
+       VALUES ($1, $2, $3, $4)`,
+      [
+        notifId,
+        targetRecipientId,
+        `New message from ${created.sender_name}`,
+        message.length > 80 ? message.substring(0, 80) + '...' : message
+      ]
+    );
+  }
+
+  broadcastEvent('campaign:message', {
+    campaignId,
+    message: created,
+    timestamp: new Date().toISOString()
+  });
+
+  return res.status(201).json({ message: created });
+});
+
+// GET /api/campaigns/:id/proof-submissions - Get campaign deliverable proof submissions
+router.get('/:id/proof-submissions', requireAuth, async (req, res) => {
+  const campaignId = req.params.id;
+
+  let querySql = `
+    SELECT p.id, p.campaign_id, p.creator_id, p.application_id,
+           p.deliverable_title, p.live_url, p.description,
+           p.attachment_path, p.attachment_name, p.status,
+           p.brand_feedback, p.submitted_at, p.reviewed_at, p.created_at,
+           u.full_name AS creator_name, u.avatar_url AS creator_avatar,
+           u.email AS creator_email
+    FROM campaign_proof_submissions p
+    JOIN users u ON u.id = p.creator_id
+    WHERE p.campaign_id = $1
+  `;
+  const params = [campaignId];
+
+  if (req.user.role === 'creator') {
+    querySql += ' AND p.creator_id = $2';
+    params.push(req.user.userId);
+  }
+
+  querySql += ' ORDER BY p.submitted_at DESC';
+
+  const result = await query(querySql, params);
+  return res.json({ submissions: result.rows });
+});
+
+// POST /api/campaigns/:id/proof-submissions - Creator submits proof of work
+router.post('/:id/proof-submissions', requireAuth, requireRole('creator'), upload.single('attachment'), async (req, res) => {
+  const campaignId = req.params.id;
+  const { deliverableTitle, liveUrl, description } = req.body || {};
+
+  if (!deliverableTitle || !liveUrl) {
+    return res.status(400).json({ error: 'Deliverable title and live content URL are required' });
+  }
+
+  let attachmentPath = null;
+  let attachmentName = null;
+
+  if (req.file) {
+    const proofsDir = path.join(process.cwd(), 'uploads', 'proof_attachments');
+    fs.mkdirSync(proofsDir, { recursive: true });
+    const sanitized = (req.file.originalname || 'proof_image.png').replace(/[^a-zA-Z0-9._-]/g, '_');
+    const diskName = `${campaignId}_${req.user.userId}_${Date.now()}_${sanitized}`;
+    attachmentPath = path.join(proofsDir, diskName);
+    attachmentName = req.file.originalname;
+    fs.writeFileSync(attachmentPath, req.file.buffer);
+  }
+
+  const appResult = await query(
+    'SELECT id, brand_id FROM campaign_applications WHERE campaign_id = $1 AND creator_id = $2',
+    [campaignId, req.user.userId]
+  );
+  const app = appResult.rows[0];
+
+  const proofId = createId('proof');
+  const insertResult = await query(
+    `INSERT INTO campaign_proof_submissions (
+       id, campaign_id, creator_id, application_id, deliverable_title,
+       live_url, description, attachment_path, attachment_name, status
+     )
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'pending')
+     RETURNING *`,
+    [
+      proofId,
+      campaignId,
+      req.user.userId,
+      app ? app.id : null,
+      deliverableTitle,
+      liveUrl,
+      description || '',
+      attachmentPath,
+      attachmentName
+    ]
+  );
+
+  const submission = insertResult.rows[0];
+
+  // Notify brand
+  const campResult = await query('SELECT brand_id, title FROM campaigns WHERE id = $1', [campaignId]);
+  const campaign = campResult.rows[0];
+  if (campaign) {
+    const notifId = createId('notif');
+    const title = 'New Deliverable Proof Submitted 📋';
+    const message = `A creator has submitted proof for "${deliverableTitle}" on campaign ${campaign.title}. Please review and approve.`;
+    await query(
+      `INSERT INTO notifications (id, user_id, title, message)
+       VALUES ($1, $2, $3, $4)`,
+      [notifId, campaign.brand_id, title, message]
+    );
+
+    broadcastEvent('notification', {
+      title,
+      message,
+      userId: campaign.brand_id,
+      timestamp: new Date().toISOString()
+    });
+  }
+
+  broadcastEvent('campaign:proof_submitted', {
+    campaignId,
+    submission,
+    timestamp: new Date().toISOString()
+  });
+
+  return res.status(201).json({ submission });
+});
+
+// PATCH /api/campaigns/:id/proof-submissions/:proofId/status - Brand reviews proof (approve / request revision)
+router.patch('/:id/proof-submissions/:proofId/status', requireAuth, async (req, res) => {
+  if (req.user.role !== 'brand' && req.user.role !== 'admin') {
+    return res.status(403).json({ error: 'Only brand or admin can review proof submissions' });
+  }
+
+  const { id: campaignId, proofId } = req.params;
+  const { status, brandFeedback } = req.body || {};
+
+  if (!['approved', 'revision_requested', 'rejected'].includes(status)) {
+    return res.status(400).json({ error: 'Status must be approved, revision_requested, or rejected' });
+  }
+
+  const proofResult = await query(
+    `UPDATE campaign_proof_submissions
+     SET status = $1,
+         brand_feedback = $2,
+         reviewed_at = NOW(),
+         updated_at = NOW()
+     WHERE id = $3 AND campaign_id = $4
+     RETURNING *`,
+    [status, brandFeedback || '', proofId, campaignId]
+  );
+
+  const proof = proofResult.rows[0];
+  if (!proof) {
+    return res.status(404).json({ error: 'Proof submission not found' });
+  }
+
+  // Notify creator
+  const notifId = createId('notif');
+  const title = status === 'approved' 
+    ? 'Deliverable Proof Approved! 🎉' 
+    : 'Changes Requested on Deliverable Proof ⚠️';
+  const message = status === 'approved'
+    ? `Your proof for "${proof.deliverable_title}" has been approved by the brand!`
+    : `Brand requested changes on "${proof.deliverable_title}": "${brandFeedback || 'Please review feedback and update'}". You can chat directly with the brand in the Campaign Chat.`;
+
+  await query(
+    `INSERT INTO notifications (id, user_id, title, message)
+     VALUES ($1, $2, $3, $4)`,
+    [notifId, proof.creator_id, title, message]
+  );
+
+  broadcastEvent('notification', {
+    title,
+    message,
+    userId: proof.creator_id,
+    timestamp: new Date().toISOString()
+  });
+
+  broadcastEvent('campaign:proof_reviewed', {
+    campaignId,
+    proof,
+    timestamp: new Date().toISOString()
+  });
+
+  return res.json({ submission: proof });
+});
+
+// POST /api/campaigns/:id/direct-join - Direct auto-join for custom invited creators
+router.post('/:id/direct-join', requireAuth, requireRole('creator'), async (req, res) => {
+  const campaignId = req.params.id;
+
+  const campaignResult = await query(
+    `SELECT id, brand_id, title, platform, status, target_audience, budget, budget_min, budget_max, deliverables_summary
+     FROM campaigns
+     WHERE id = $1`,
+    [campaignId]
+  );
+  const campaign = campaignResult.rows[0];
+
+  if (!campaign) {
+    return res.status(404).json({ error: 'Campaign not found' });
+  }
+
+  if (campaign.brand_id === req.user.userId) {
+    return res.status(400).json({ error: 'Campaign owner cannot join as creator' });
+  }
+
+  // Check if creator has already applied or joined
+  const existingApplication = await query(
+    'SELECT id, status FROM campaign_applications WHERE campaign_id = $1 AND creator_id = $2',
+    [campaignId, req.user.userId]
+  );
+
+  if (existingApplication.rows[0]) {
+    return res.json({
+      success: true,
+      alreadyJoined: true,
+      applicationId: existingApplication.rows[0].id,
+      status: existingApplication.rows[0].status,
+    });
+  }
+
+  const applicationId = createId('app');
+  const fee = Number(campaign.budget_min || campaign.budget || 0);
+
+  await query(
+    `INSERT INTO campaign_applications (
+      id, campaign_id, creator_id, brand_id, pitch_message, platform_links,
+      audience_location, audience_age_band, audience_niche, engagement_snapshot,
+      past_work_links, proposed_deliverables, proposed_fee, proposed_payment_model,
+      earliest_start_date, availability_notes, compliance_agreed, status,
+      audience_fit_score, engagement_quality_score, content_quality_score,
+      reliability_score, budget_fit_score, fit_score
+    )
+    VALUES (
+      $1, $2, $3, $4, $5, '[]'::jsonb,
+      $6, '18-34', $7, 'Direct Invite Auto-Verified',
+      '[]'::jsonb, $8, $9, 'Flat Fee Escrow',
+      CURRENT_DATE, 'Immediate availability via invite', true, 'approved',
+      100, 100, 100, 100, 100, 100
+    )`,
+    [
+      applicationId,
+      campaignId,
+      req.user.userId,
+      campaign.brand_id,
+      'Joined directly via brand custom invite link.',
+      campaign.target_audience || 'Global',
+      campaign.platform || 'General',
+      campaign.deliverables_summary || 'As specified in contract',
+      fee,
+    ]
+  );
+
+  await query(
+    `INSERT INTO creator_matches (id, campaign_id, creator_id, match_score, rationale)
+     VALUES ($1, $2, $3, 100, $4::jsonb)
+     ON CONFLICT (campaign_id, creator_id)
+     DO UPDATE SET match_score = 100, generated_at = NOW()`,
+    [
+      createId('match'),
+      campaignId,
+      req.user.userId,
+      JSON.stringify({ source: 'direct_brand_invite_link', joinedAt: new Date().toISOString() }),
+    ]
+  );
+
+  await query(
+    `INSERT INTO notifications (id, user_id, title, message)
+     VALUES ($1, $2, $3, $4)`,
+    [
+      createId('notif'),
+      campaign.brand_id,
+      'Creator Joined via Invite Link! 🎉',
+      `${req.user.name || 'Creator'} accepted custom invite and joined ${campaign.title}!`,
+    ]
+  );
+
+  return res.status(201).json({
+    success: true,
+    autoJoined: true,
+    campaignId,
+    applicationId,
+    status: 'approved',
+  });
 });
 
 router.post('/:id/apply', requireAuth, requireRole('creator'), async (req, res) => {

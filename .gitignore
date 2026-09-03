@@ -50,3 +50,8 @@ playwright/.cache/
 
 # Vitest
 .vitest/
+
+# Uploads & Scratch
+uploads/
+scratch/
+Contract/

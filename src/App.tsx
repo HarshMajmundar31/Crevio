@@ -14,6 +14,7 @@ import ChooseRole from "./pages/ChooseRole";
 import Signup from "./pages/Signup";
 import Dashboard from "./pages/Dashboard";
 import Campaigns from "./pages/Campaigns";
+import WorkingCampaigns from "./pages/WorkingCampaigns";
 import CreateCampaign from "./pages/CreateCampaign";
 import CampaignExecutionTimeline from "./pages/CampaignExecutionTimeline";
 import ApplyToCampaign from "./pages/ApplyToCampaign";
@@ -143,6 +144,7 @@ const AppRoutes = () => {
         <Route path="/profile" element={<ProtectedRoute><CreatorProfile /></ProtectedRoute>} />
         <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
         <Route path="/campaigns" element={<ProtectedRoute><Campaigns /></ProtectedRoute>} />
+        <Route path="/campaigns/working" element={<ProtectedRoute><WorkingCampaigns /></ProtectedRoute>} />
         <Route path="/campaigns/create" element={<RoleRoute roles={["brand", "admin"]}><CreateCampaign /></RoleRoute>} />
         <Route path="/campaigns/:id" element={<ProtectedRoute><CampaignDetail /></ProtectedRoute>} />
         <Route path="/campaigns/:id/timeline" element={<ProtectedRoute><CampaignExecutionTimeline /></ProtectedRoute>} />

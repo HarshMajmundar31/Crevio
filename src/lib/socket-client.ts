@@ -76,3 +76,20 @@ export function subscribeToRealtimeEvents(onEvent: (event: { type: string; paylo
   };
 }
 
+export function subscribeToEvent(eventName: string, handler: (payload: any) => void) {
+  const socketInstance = getSocket();
+  if (!socketInstance) return () => {};
+  socketInstance.on(eventName, handler);
+  return () => {
+    socketInstance.off(eventName, handler);
+  };
+}
+
+export function joinCampaignRoom(campaignId: string) {
+  const socketInstance = getSocket();
+  if (socketInstance && campaignId) {
+    socketInstance.emit('join_campaign', campaignId);
+  }
+}
+
+

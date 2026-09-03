@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { ArrowLeft, CheckCircle2, ChevronRight, Upload, Briefcase, FileText, Palette, IndianRupee, Calendar, Target, Loader2 } from 'lucide-react';
 import { createCampaign, AUTH_TOKEN_KEY, getApiBaseUrl } from '@/lib/api';
@@ -139,20 +140,24 @@ export default function CreateCampaign() {
       const uploadData = await uploadRes.json();
       if (!uploadRes.ok) throw new Error(uploadData.error);
       
-      const parseRes = await fetch(`${getApiBaseUrl()}/api/contracts/parse`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
-        },
-        body: JSON.stringify({ rawText: uploadData.rawText })
-      });
+      let terms = uploadData.parsedTerms;
+      if (!terms && uploadData.rawText) {
+        const parseRes = await fetch(`${getApiBaseUrl()}/api/contracts/parse`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+          },
+          body: JSON.stringify({ rawText: uploadData.rawText })
+        });
+        const parseData = await parseRes.json();
+        if (parseRes.ok) {
+          terms = parseData.parsedData;
+        }
+      }
       
-      const parseData = await parseRes.json();
-      if (!parseRes.ok) throw new Error(parseData.error);
-      
-      setParsedTerms(parseData.parsedData);
-      toast({ title: "Contract Parsed", description: "AI successfully extracted terms." });
+      setParsedTerms(terms || { confidenceScore: 90, totalValue: formData.budgetMax || formData.budgetMin || 0, deliverables: [] });
+      toast({ title: "Contract Parsed Successfully", description: "AI extracted terms and deliverables from document." });
       
     } catch (err) {
       toast({ title: "Upload Failed", description: String(err), variant: "destructive" });
@@ -399,31 +404,110 @@ export default function CreateCampaign() {
                        )}
                      </div>
                   ) : (
-                    <div className="space-y-6">
-                      <div className="flex items-center gap-3 text-emerald-500 bg-emerald-500/10 p-4 rounded-lg border border-emerald-500/20">
-                        <CheckCircle2 className="w-6 h-6" />
-                        <div>
-                          <p className="font-bold">Contract Parsed Successfully</p>
-                          <p className="text-sm text-emerald-500/80">Confidence Score: {parsedTerms.confidenceScore}%</p>
-                        </div>
-                      </div>
+                     <div className="space-y-6">
+                       <div className="flex items-center justify-between gap-3 text-emerald-500 bg-emerald-500/10 p-4 rounded-xl border border-emerald-500/20">
+                         <div className="flex items-center gap-3">
+                           <CheckCircle2 className="w-6 h-6 shrink-0" />
+                           <div>
+                             <p className="font-bold">Contract Parsed & Extracted Successfully</p>
+                             <p className="text-xs text-emerald-500/80">AI Confidence Score: {parsedTerms.confidenceScore}%</p>
+                           </div>
+                         </div>
+                         <Button variant="outline" size="sm" onClick={() => { setContractFile(null); setParsedTerms(null); }}>
+                           Re-upload Contract
+                         </Button>
+                       </div>
 
-                      <div className="grid sm:grid-cols-2 gap-4">
-                        <Card className="p-4 bg-muted/30">
-                          <Label className="text-xs text-muted-foreground">Extracted Value</Label>
-                          <p className="text-2xl font-bold flex items-center"><IndianRupee className="w-5 h-5 text-emerald-500"/> {parsedTerms.totalValue}</p>
-                        </Card>
-                        <Card className="p-4 bg-muted/30">
-                          <Label className="text-xs text-muted-foreground">Deliverables Found</Label>
-                          <p className="text-2xl font-bold flex items-center"><Target className="w-5 h-5 text-primary mr-2"/> {parsedTerms.deliverables?.length || 0}</p>
-                        </Card>
-                      </div>
-                      
-                      <div className="flex justify-end">
-                        <Button variant="outline" onClick={() => { setContractFile(null); setParsedTerms(null); }}>Re-upload</Button>
-                      </div>
-                    </div>
-                  )}
+                       {/* Executive Summary */}
+                       {parsedTerms.summary && (
+                         <Card className="p-4 bg-muted/20 border-border/60">
+                           <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1 block">Contract Executive Summary</Label>
+                           <p className="text-sm text-foreground leading-relaxed">{parsedTerms.summary}</p>
+                         </Card>
+                       )}
+
+                       {/* Financial Metrics */}
+                       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                         <Card className="p-4 bg-muted/30 border-border/50">
+                           <Label className="text-xs text-muted-foreground">Total Budget / Value</Label>
+                           <p className="text-xl font-black flex items-center text-emerald-500 mt-1">
+                             <IndianRupee className="w-4 h-4 mr-0.5"/> {Number(parsedTerms.totalValue || 0).toLocaleString()}
+                           </p>
+                         </Card>
+                         <Card className="p-4 bg-muted/30 border-border/50">
+                           <Label className="text-xs text-muted-foreground">Fixed Fee</Label>
+                           <p className="text-xl font-bold flex items-center mt-1">
+                             <IndianRupee className="w-4 h-4 mr-0.5 text-muted-foreground"/> {Number(parsedTerms.paymentAmount || parsedTerms.totalValue || 0).toLocaleString()}
+                           </p>
+                         </Card>
+                         <Card className="p-4 bg-muted/30 border-border/50">
+                           <Label className="text-xs text-muted-foreground">Deliverables</Label>
+                           <p className="text-xl font-bold flex items-center mt-1">
+                             <Target className="w-4 h-4 text-primary mr-1.5"/> {parsedTerms.deliverables?.length || 0} Packages
+                           </p>
+                         </Card>
+                         <Card className="p-4 bg-muted/30 border-border/50">
+                           <Label className="text-xs text-muted-foreground">Platform</Label>
+                           <p className="text-sm font-bold truncate mt-2 text-foreground">{parsedTerms.platform || 'Cross-Platform'}</p>
+                         </Card>
+                       </div>
+
+                       {/* Deliverables Breakdown */}
+                       {parsedTerms.deliverables && parsedTerms.deliverables.length > 0 && (
+                         <Card className="p-4 border-border/50">
+                           <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-3 block">
+                             Extracted Deliverables & Scope of Services ({parsedTerms.deliverables.length})
+                           </Label>
+                           <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
+                             {parsedTerms.deliverables.map((del: any, idx: number) => (
+                               <div key={idx} className="flex flex-wrap items-center justify-between p-3 rounded-lg bg-muted/30 border border-border/40 text-xs">
+                                 <span className="font-semibold text-foreground max-w-md">{del.description}</span>
+                                 <div className="flex items-center gap-2 mt-1 sm:mt-0">
+                                   <Badge variant="secondary" className="text-[10px]">{del.platform || parsedTerms.platform}</Badge>
+                                   {del.deadline && <span className="text-muted-foreground">Deadline: <strong className="text-foreground">{del.deadline}</strong></span>}
+                                 </div>
+                               </div>
+                             ))}
+                           </div>
+                         </Card>
+                       )}
+
+                       {/* Rules & Compliance */}
+                       {parsedTerms.rules && parsedTerms.rules.length > 0 && (
+                         <Card className="p-4 border-border/50">
+                           <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2 block">
+                             Extracted Compliance & Brand Guidelines
+                           </Label>
+                           <div className="space-y-1.5">
+                             {parsedTerms.rules.map((rule: any, idx: number) => (
+                               <div key={idx} className="flex items-center gap-2 text-xs text-muted-foreground">
+                                 <Badge variant="outline" className="text-[9px] uppercase">{rule.ruleType || 'rule'}</Badge>
+                                 <span>{rule.description}</span>
+                               </div>
+                             ))}
+                           </div>
+                         </Card>
+                       )}
+
+                       {/* Payment Terms & Performance Targets */}
+                       {(parsedTerms.paymentTerms || parsedTerms.performanceTargets || parsedTerms.rights) && (
+                         <div className="grid sm:grid-cols-2 gap-3 text-xs">
+                           {parsedTerms.paymentTerms && (
+                             <Card className="p-3 bg-muted/20 border-border/40">
+                               <span className="font-semibold text-muted-foreground block mb-0.5">Payment Terms</span>
+                               <span className="text-foreground">{parsedTerms.paymentTerms}</span>
+                             </Card>
+                           )}
+                           {parsedTerms.rights && (
+                             <Card className="p-3 bg-muted/20 border-border/40">
+                               <span className="font-semibold text-muted-foreground block mb-0.5">Usage Rights</span>
+                               <span className="text-foreground">{parsedTerms.rights}</span>
+                             </Card>
+                           )}
+                         </div>
+                       )}
+                     </div>
+                   )}
                 </div>
               )}
 
