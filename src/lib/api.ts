@@ -978,6 +978,289 @@ export async function apiReviewCampaignProof(
   );
 }
 
+// ==========================================
+// Super-Admin Management API Types & Methods
+// ==========================================
+
+export interface AdminOverviewStats {
+  users: {
+    total_users: number;
+    total_brands: number;
+    total_creators: number;
+    total_admins: number;
+  };
+  campaigns: {
+    total_campaigns: number;
+    active_campaigns: number;
+    completed_campaigns: number;
+    draft_campaigns: number;
+    total_budget_volume: number;
+  };
+  contracts: {
+    total_contracts: number;
+    active_contracts: number;
+    completed_contracts: number;
+    disputed_contracts: number;
+    total_contract_volume: number;
+  };
+  escrow: {
+    total_escrows: number;
+    total_held_escrow: number;
+    total_released_escrow: number;
+    disputed_escrows: number;
+  };
+  totalApplications: number;
+  totalMessages: number;
+  totalProofs: number;
+}
+
+export interface AdminActivityItem {
+  event_type: string;
+  id: string;
+  description: string;
+  actor_name: string;
+  actor_role: string;
+  timestamp: string;
+}
+
+export interface AdminCampaignItem {
+  id: string;
+  brand_id: string;
+  brand_name: string;
+  brand_email: string;
+  brand_avatar?: string;
+  title: string;
+  description: string;
+  goal?: string;
+  target_audience?: string;
+  deliverables_summary?: string;
+  timeline_summary?: string;
+  platform: string;
+  budget: number | string;
+  budget_min?: number;
+  budget_max?: number;
+  deadline: string;
+  status: 'draft' | 'active' | 'completed' | 'cancelled';
+  contract_file_name?: string;
+  applicants_count: number;
+  accepted_count: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AdminContractItem {
+  id: string;
+  campaign_id?: string;
+  campaign_title?: string;
+  contract_file_name?: string;
+  contract_extracted_terms?: any;
+  brand_id: string;
+  brand_name: string;
+  brand_email: string;
+  creator_id: string;
+  creator_name: string;
+  creator_email: string;
+  status: 'draft' | 'pending' | 'accepted' | 'locked' | 'executed' | 'completed' | 'disputed' | 'cancelled';
+  payment_amount: number | string;
+  contract_deadline?: string;
+  notes?: string;
+  signed_contract_name?: string;
+  signed_at?: string;
+  deliverables_count: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AdminApplicationItem {
+  id: string;
+  campaign_id: string;
+  campaign_title: string;
+  campaign_platform: string;
+  campaign_budget: number | string;
+  creator_id: string;
+  creator_name: string;
+  creator_email: string;
+  creator_avatar?: string;
+  brand_id: string;
+  brand_name: string;
+  brand_email: string;
+  pitch_message: string;
+  proposed_fee: number | string;
+  proposed_deliverables: string;
+  earliest_start_date: string;
+  status: 'submitted' | 'shortlisted' | 'interviewing' | 'approved' | 'rejected' | 'withdrawn';
+  brand_notes?: string;
+  signed_contract_name?: string;
+  signed_at?: string;
+  created_at: string;
+}
+
+export interface AdminMessageItem {
+  id: string;
+  campaign_id: string;
+  campaign_title: string;
+  sender_id: string;
+  sender_name: string;
+  sender_email: string;
+  sender_avatar?: string;
+  sender_role: string;
+  recipient_id?: string;
+  recipient_name?: string;
+  message: string;
+  attachment_url?: string;
+  attachment_name?: string;
+  created_at: string;
+}
+
+export interface AdminUserItem {
+  id: string;
+  full_name: string;
+  email: string;
+  role: 'brand' | 'creator' | 'admin';
+  avatar_url?: string;
+  is_active: boolean;
+  available_balance: number | string;
+  pending_escrow_balance: number | string;
+  campaigns_count: number;
+  contracts_count: number;
+  applications_count: number;
+  created_at: string;
+}
+
+export interface AdminProofItem {
+  id: string;
+  campaign_id: string;
+  campaign_title: string;
+  creator_id: string;
+  creator_name: string;
+  creator_email: string;
+  brand_name: string;
+  deliverable_title: string;
+  live_url: string;
+  description?: string;
+  attachment_path?: string;
+  attachment_name?: string;
+  status: 'pending' | 'approved' | 'revision_requested' | 'rejected';
+  brand_feedback?: string;
+  submitted_at: string;
+  reviewed_at?: string;
+  created_at: string;
+}
+
+// Admin Overview
+export async function apiAdminGetOverview() {
+  return request<{ stats: AdminOverviewStats; activityStream: AdminActivityItem[] }>('/api/admin/overview', 'GET');
+}
+
+// Admin Campaigns CRUD
+export async function apiAdminGetCampaigns(params?: { q?: string; status?: string }) {
+  const queryStr = new URLSearchParams(params as any).toString();
+  return request<{ campaigns: AdminCampaignItem[] }>(`/api/admin/campaigns${queryStr ? `?${queryStr}` : ''}`, 'GET');
+}
+
+export async function apiAdminCreateCampaign(payload: Partial<AdminCampaignItem>) {
+  return request<{ success: boolean; campaign: AdminCampaignItem }>('/api/admin/campaigns', 'POST', payload);
+}
+
+export async function apiAdminUpdateCampaign(id: string, payload: Partial<AdminCampaignItem>) {
+  return request<{ success: boolean; campaign: AdminCampaignItem }>(`/api/admin/campaigns/${id}`, 'PATCH', payload);
+}
+
+export async function apiAdminDeleteCampaign(id: string) {
+  return request<{ success: boolean; message: string }>(`/api/admin/campaigns/${id}`, 'DELETE');
+}
+
+// Admin Contracts CRUD
+export async function apiAdminGetContracts(params?: { q?: string; status?: string }) {
+  const queryStr = new URLSearchParams(params as any).toString();
+  return request<{ contracts: AdminContractItem[] }>(`/api/admin/contracts${queryStr ? `?${queryStr}` : ''}`, 'GET');
+}
+
+export async function apiAdminCreateContract(payload: { brand_id: string; creator_id: string; payment_amount: number; campaign_id?: string; contract_deadline?: string; notes?: string; status?: string }) {
+  return request<{ success: boolean; contract: AdminContractItem }>('/api/admin/contracts', 'POST', payload);
+}
+
+export async function apiAdminUpdateContract(id: string, payload: Partial<AdminContractItem>) {
+  return request<{ success: boolean; contract: AdminContractItem }>(`/api/admin/contracts/${id}`, 'PATCH', payload);
+}
+
+export async function apiAdminDeleteContract(id: string) {
+  return request<{ success: boolean; message: string }>(`/api/admin/contracts/${id}`, 'DELETE');
+}
+
+// Admin Applications
+export async function apiAdminGetApplications(params?: { q?: string; status?: string }) {
+  const queryStr = new URLSearchParams(params as any).toString();
+  return request<{ applications: AdminApplicationItem[] }>(`/api/admin/applications${queryStr ? `?${queryStr}` : ''}`, 'GET');
+}
+
+export async function apiAdminUpdateApplicationStatus(id: string, status: string, brand_notes?: string) {
+  return request<{ success: boolean; application: AdminApplicationItem }>(`/api/admin/applications/${id}/status`, 'PATCH', { status, brand_notes });
+}
+
+export async function apiAdminDeleteApplication(id: string) {
+  return request<{ success: boolean; message: string }>(`/api/admin/applications/${id}`, 'DELETE');
+}
+
+// Admin Chat & Messages
+export async function apiAdminGetMessages(params?: { campaign_id?: string; q?: string }) {
+  const queryStr = new URLSearchParams(params as any).toString();
+  return request<{ messages: AdminMessageItem[] }>(`/api/admin/messages${queryStr ? `?${queryStr}` : ''}`, 'GET');
+}
+
+export async function apiAdminPostMessage(payload: { campaign_id: string; message: string; recipient_id?: string }) {
+  return request<{ success: boolean; message: AdminMessageItem }>('/api/admin/messages', 'POST', payload);
+}
+
+export async function apiAdminDeleteMessage(id: string) {
+  return request<{ success: boolean; message: string }>(`/api/admin/messages/${id}`, 'DELETE');
+}
+
+// Admin Users CRUD & Wallet
+export async function apiAdminGetUsers(params?: { q?: string; role?: string }) {
+  const queryStr = new URLSearchParams(params as any).toString();
+  return request<{ users: AdminUserItem[] }>(`/api/admin/users${queryStr ? `?${queryStr}` : ''}`, 'GET');
+}
+
+export async function apiAdminCreateUser(payload: { full_name: string; email: string; role: string; initial_balance?: number }) {
+  return request<{ success: boolean; user: AdminUserItem }>('/api/admin/users', 'POST', payload);
+}
+
+export async function apiAdminUpdateUser(id: string, payload: Partial<AdminUserItem>) {
+  return request<{ success: boolean; user: AdminUserItem }>(`/api/admin/users/${id}`, 'PATCH', payload);
+}
+
+export async function apiAdminAdjustUserBalance(id: string, amount: number, description?: string) {
+  return request<{ success: boolean; wallet: ApiWallet }>(`/api/admin/users/${id}/adjust-balance`, 'POST', { amount, description });
+}
+
+export async function apiAdminDeleteUser(id: string) {
+  return request<{ success: boolean; message: string }>(`/api/admin/users/${id}`, 'DELETE');
+}
+
+// Admin Proof Submissions
+export async function apiAdminGetProofs() {
+  return request<{ proofs: AdminProofItem[] }>('/api/admin/proofs', 'GET');
+}
+
+export async function apiAdminUpdateProofStatus(id: string, status: string, brand_feedback?: string) {
+  return request<{ success: boolean; proof: AdminProofItem }>(`/api/admin/proofs/${id}/status`, 'PATCH', { status, brand_feedback });
+}
+
+export async function apiAdminDeleteProof(id: string) {
+  return request<{ success: boolean; message: string }>(`/api/admin/proofs/${id}`, 'DELETE');
+}
+
+// Admin Escrow Actions
+export async function apiAdminReleaseEscrow(id: string) {
+  return request<{ success: boolean; message: string }>(`/api/admin/escrows/${id}/release`, 'POST');
+}
+
+export async function apiAdminRefundEscrow(id: string) {
+  return request<{ success: boolean; message: string }>(`/api/admin/escrows/${id}/refund`, 'POST');
+}
+
+
 
 
 
