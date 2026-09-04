@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ShieldCheck, CheckCircle2, UserCheck, Sparkles } from 'lucide-react';
+import { ShieldCheck, CheckCircle2, UserCheck, Sparkles, LogOut } from 'lucide-react';
 import { LogoIcon } from '@/components/LogoIcon';
+import { useAuth } from '@/contexts/AuthContext';
+import { Button } from '@/components/ui/button';
 import Step1_CreatorProfile from './creator/Step1_CreatorProfile';
 import Step2_SocialVerification from './creator/Step2_SocialVerification';
 import Step3_RateCard from './creator/Step3_RateCard';
@@ -17,6 +19,7 @@ const steps = [
 ];
 
 export default function CreatorOnboarding() {
+  const { logout } = useAuth();
   const [currentStep, setCurrentStep] = useState(1);
   const [formData, setFormData] = useState({
     handle: '',
@@ -58,8 +61,19 @@ export default function CreatorOnboarding() {
                 <p className="text-[10px] text-muted-foreground uppercase tracking-wider -mt-0.5">Verified Creator Verification</p>
               </div>
             </div>
-            <div className="text-xs font-semibold text-muted-foreground bg-accent/10 border border-accent/20 px-3 py-1 rounded-full">
-              Step {currentStep} of {steps.length}: <span className="text-foreground">{steps[currentStep - 1].title}</span>
+            <div className="flex items-center gap-3">
+              <div className="text-xs font-semibold text-muted-foreground bg-accent/10 border border-accent/20 px-3 py-1 rounded-full hidden sm:inline-flex">
+                Step {currentStep} of {steps.length}: <span className="text-foreground ml-1">{steps[currentStep - 1].title}</span>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => logout()}
+                className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 gap-1.5 transition-colors text-xs font-medium"
+              >
+                <LogOut className="w-4 h-4" />
+                <span>Log out</span>
+              </Button>
             </div>
           </div>
 

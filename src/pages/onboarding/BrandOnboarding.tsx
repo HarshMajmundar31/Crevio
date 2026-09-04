@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Shield, CheckCircle2 } from 'lucide-react';
+import { Shield, CheckCircle2, LogOut } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { Button } from '@/components/ui/button';
 import Step1_Workspace from './brand/Step1_Workspace';
 import Step2_LinkedIn from './brand/Step2_LinkedIn';
 import Step3_BrandProfile from './brand/Step3_BrandProfile';
@@ -19,7 +20,7 @@ const steps = [
 ];
 
 export default function BrandOnboarding() {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   
   const [currentStep, setCurrentStep] = useState(() => {
     // If we have an authorization code from LinkedIn redirect, make sure we mount Step 2
@@ -75,8 +76,19 @@ export default function BrandOnboarding() {
                 <p className="text-[10px] text-muted-foreground uppercase tracking-wider -mt-0.5">Workspace & Identity Setup</p>
               </div>
             </div>
-            <div className="text-sm font-medium text-muted-foreground">
-              Step {steps.findIndex(s => s.id === currentStep) + 1} of {steps.length}
+            <div className="flex items-center gap-3">
+              <div className="text-sm font-medium text-muted-foreground hidden sm:block">
+                Step {steps.findIndex(s => s.id === currentStep) + 1} of {steps.length}
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => logout()}
+                className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 gap-1.5 transition-colors text-xs font-medium"
+              >
+                <LogOut className="w-4 h-4" />
+                <span>Log out</span>
+              </Button>
             </div>
           </div>
 
