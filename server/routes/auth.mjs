@@ -20,6 +20,7 @@ async function syncClerkPublicMetadata(userId, role) {
 }
 
 function toApiUser(row) {
+  if (!row) return null;
   console.log(`[toApiUser] Mapping user ${row.id}: role=${row.role}, step=${row.onboarding_step}`);
   return {
     id: row.id,
@@ -284,6 +285,21 @@ router.post('/onboard', requireClerkAuth, async (req, res) => {
       } else {
         throw insertErr;
       }
+    }
+
+    if (!insertedUser) {
+      const fallbackQuery = await query(
+        `SELECT id, full_name, email, role, onboarding_step, linkedin_linked, linkedin_data, onboarding_draft 
+         FROM users WHERE id = $1 OR LOWER(email) = LOWER($2) LIMIT 1`,
+        [userId, email]
+      );
+      insertedUser = fallbackQuery.rows[0] || {
+        id: userId,
+        full_name: name,
+        email: email,
+        role: effectiveRole,
+        onboarding_step: initialStep,
+      };
     }
 
     await syncClerkPublicMetadata(userId, effectiveRole);
