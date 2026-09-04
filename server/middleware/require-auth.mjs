@@ -36,7 +36,7 @@ async function findOrBootstrapUser({ userId, email, name }, sessionClaims = {}) 
   const userResult = await query(
     `SELECT id, full_name, email, role 
      FROM users 
-     WHERE (id = $1 OR (email IS NOT NULL AND $2::text IS NOT NULL AND email = $2)) AND is_active = TRUE
+     WHERE id = $1 OR (email IS NOT NULL AND $2::text IS NOT NULL AND LOWER(email) = LOWER($2))
      ORDER BY CASE WHEN id = $1 THEN 0 ELSE 1 END 
      LIMIT 1`,
     [userId, email || null]
@@ -48,14 +48,20 @@ async function findOrBootstrapUser({ userId, email, name }, sessionClaims = {}) 
   const targetRole = isAdminEmail || jwtRole === 'admin' ? 'admin' : jwtRole;
 
   if (existingUser) {
-    if (targetRole && existingUser.role !== targetRole && ['admin', 'brand', 'creator'].includes(targetRole)) {
-      const updated = await query(
-        `UPDATE users SET role = $2, updated_at = NOW() WHERE id = $1 RETURNING id, full_name, email, role`,
-        [existingUser.id, targetRole]
-      );
-      return updated.rows[0] || existingUser;
-    }
-    return existingUser;
+    const effectiveRole = targetRole && ['admin', 'brand', 'creator'].includes(targetRole) ? targetRole : existingUser.role;
+    const updated = await query(
+      `UPDATE users 
+       SET id = $1,
+           full_name = COALESCE($2, full_name),
+           email = COALESCE($3, email),
+           role = $4,
+           is_active = TRUE,
+           updated_at = NOW()
+       WHERE id = $5
+       RETURNING id, full_name, email, role`,
+      [userId, name, email, effectiveRole, existingUser.id]
+    );
+    return updated.rows[0] || existingUser;
   }
 
   if (!email && !targetRole) {
@@ -64,20 +70,37 @@ async function findOrBootstrapUser({ userId, email, name }, sessionClaims = {}) 
 
   const roleToInsert = targetRole || 'creator';
 
-  const inserted = await query(
-    `INSERT INTO users (id, full_name, email, role, is_active)
-     VALUES ($1, $2, $3, $4, TRUE)
-     ON CONFLICT (id) DO UPDATE SET
-       full_name = EXCLUDED.full_name,
-       email = EXCLUDED.email,
-       role = $4,
-       is_active = TRUE,
-       updated_at = NOW()
-     RETURNING id, full_name, email, role`,
-    [userId, name, email, roleToInsert]
-  );
+  try {
+    const inserted = await query(
+      `INSERT INTO users (id, full_name, email, role, is_active)
+       VALUES ($1, $2, $3, $4, TRUE)
+       ON CONFLICT (id) DO UPDATE SET
+         full_name = EXCLUDED.full_name,
+         email = EXCLUDED.email,
+         role = $4,
+         is_active = TRUE,
+         updated_at = NOW()
+       RETURNING id, full_name, email, role`,
+      [userId, name, email, roleToInsert]
+    );
 
-  return inserted.rows[0] || null;
+    return inserted.rows[0] || null;
+  } catch (err) {
+    if (err?.code === '23505' && email) {
+      const updated = await query(
+        `UPDATE users
+         SET id = $1,
+             full_name = COALESCE($2, full_name),
+             is_active = TRUE,
+             updated_at = NOW()
+         WHERE LOWER(email) = LOWER($3)
+         RETURNING id, full_name, email, role`,
+        [userId, name, email]
+      );
+      return updated.rows[0] || null;
+    }
+    throw err;
+  }
 }
 
 export function requireClerkAuth(req, res, next) {

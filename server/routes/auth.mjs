@@ -76,7 +76,7 @@ router.get('/me', requireClerkAuth, async (req, res) => {
     let userResult = await query(
       `SELECT id, full_name, email, role, onboarding_step, linkedin_linked, linkedin_data, onboarding_draft 
        FROM users 
-       WHERE (id = $1 OR (email IS NOT NULL AND $2::text IS NOT NULL AND email = $2)) AND is_active = TRUE
+       WHERE id = $1 OR (email IS NOT NULL AND $2::text IS NOT NULL AND LOWER(email) = LOWER($2))
        ORDER BY CASE WHEN id = $1 THEN 0 ELSE 1 END 
        LIMIT 1`,
       [userId, email || null]
@@ -102,16 +102,18 @@ router.get('/me', requireClerkAuth, async (req, res) => {
       const shouldUpdateEmail = email && user.email !== email;
       const shouldPromoteAdmin = isAdminByEmail && user.role !== 'admin';
 
-      if (shouldUpdateName || shouldUpdateEmail || shouldPromoteAdmin) {
+      if (shouldUpdateName || shouldUpdateEmail || shouldPromoteAdmin || user.id !== userId) {
         const updated = await query(
           `UPDATE users
-           SET full_name = COALESCE($2, full_name),
+           SET id = $1,
+               full_name = COALESCE($2, full_name),
                email = COALESCE($3, email),
                role = CASE WHEN $4::boolean THEN 'admin' ELSE role END,
+               is_active = TRUE,
                updated_at = NOW()
-           WHERE id = $1
+           WHERE id = $5
            RETURNING id, full_name, email, role, onboarding_step, linkedin_linked, linkedin_data, onboarding_draft`,
-          [user.id, shouldUpdateName ? name : null, shouldUpdateEmail ? email : null, shouldPromoteAdmin]
+          [userId, shouldUpdateName ? name : null, shouldUpdateEmail ? email : null, shouldPromoteAdmin, user.id]
         );
 
         user = updated.rows[0] || user;
@@ -218,7 +220,7 @@ router.post('/onboard', requireClerkAuth, async (req, res) => {
     const existingUserResult = await query(
       `SELECT id, full_name, email, role, onboarding_step, linkedin_linked, linkedin_data, onboarding_draft 
        FROM users 
-       WHERE (id = $1 OR (email IS NOT NULL AND $2::text IS NOT NULL AND email = $2)) AND is_active = TRUE
+       WHERE id = $1 OR (email IS NOT NULL AND $2::text IS NOT NULL AND LOWER(email) = LOWER($2))
        ORDER BY CASE WHEN id = $1 THEN 0 ELSE 1 END 
        LIMIT 1`,
       [userId, email || null]
@@ -232,15 +234,16 @@ router.post('/onboard', requireClerkAuth, async (req, res) => {
 
       const updated = await query(
         `UPDATE users
-         SET role = $2,
+         SET id = $1,
+             role = $2,
              full_name = COALESCE($3, full_name),
              email = COALESCE($4, email),
              is_active = TRUE,
              onboarding_step = CASE WHEN $2 = 'admin' THEN 0 ELSE COALESCE(onboarding_step, 1) END,
              updated_at = NOW()
-         WHERE id = $1
+         WHERE id = $5
          RETURNING id, full_name, email, role, onboarding_step, linkedin_linked, linkedin_data, onboarding_draft`,
-        [existingUser.id, effectiveRole, name, email]
+        [userId, effectiveRole, name, email, existingUser.id]
       );
       const updatedUser = updated.rows[0] || existingUser;
       await syncClerkPublicMetadata(userId, effectiveRole);
@@ -265,18 +268,19 @@ router.post('/onboard', requireClerkAuth, async (req, res) => {
       insertedUser = inserted.rows[0];
     } catch (insertErr) {
       if (insertErr?.code === '23505') {
-        const altEmail = `clerk-${userId}@crevio.local`;
-        const insertedAlt = await query(
-          `INSERT INTO users (id, full_name, email, role, onboarding_step, is_active)
-           VALUES ($1, $2, $3, $4, $5, TRUE)
-           ON CONFLICT (id) DO UPDATE SET
-             role = EXCLUDED.role,
-             is_active = TRUE,
-             updated_at = NOW()
+        const updatedEmailMatch = await query(
+          `UPDATE users
+           SET id = $1,
+               role = $2,
+               full_name = COALESCE($3, full_name),
+               is_active = TRUE,
+               onboarding_step = CASE WHEN $2 = 'admin' THEN 0 ELSE COALESCE(onboarding_step, 1) END,
+               updated_at = NOW()
+           WHERE LOWER(email) = LOWER($4) OR id = $1
            RETURNING id, full_name, email, role, onboarding_step, linkedin_linked, linkedin_data, onboarding_draft`,
-          [userId, name, altEmail, effectiveRole, initialStep]
+          [userId, effectiveRole, name, email]
         );
-        insertedUser = insertedAlt.rows[0];
+        insertedUser = updatedEmailMatch.rows[0];
       } else {
         throw insertErr;
       }
