@@ -215,6 +215,15 @@ router.post('/onboard', requireClerkAuth, async (req, res) => {
       sessionClaims.public_metadata?.role || 
       sessionClaims.role;
 
+    const existingUserResult = await query(
+      `SELECT id, full_name, email, role, onboarding_step, linkedin_linked, linkedin_data, onboarding_draft 
+       FROM users 
+       WHERE (id = $1 OR (email IS NOT NULL AND $2::text IS NOT NULL AND email = $2)) AND is_active = TRUE
+       ORDER BY CASE WHEN id = $1 THEN 0 ELSE 1 END 
+       LIMIT 1`,
+      [userId, email || null]
+    );
+
     if (existingUserResult.rows[0]) {
       const existingUser = existingUserResult.rows[0];
       const effectiveRole = (existingUser.role === 'admin' || isAdminByEmail || clerkPublicRole === 'admin') 
