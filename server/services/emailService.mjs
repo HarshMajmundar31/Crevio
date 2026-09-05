@@ -5,7 +5,7 @@ import { broadcastEvent } from '../lib/socket.mjs';
 
 let resendClient = null;
 
-const DEFAULT_FROM_EMAIL = 'Crevio <onboarding@resend.dev>';
+const DEFAULT_FROM_EMAIL = 'Crevio <notifications@crevio.co.in>';
 const DEFAULT_ADMIN_EMAIL = 'crevio.admin@gmail.com';
 
 export function getResendClient() {

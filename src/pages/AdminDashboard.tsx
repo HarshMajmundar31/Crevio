@@ -1431,7 +1431,7 @@ export default function AdminDashboard() {
                   <div className="p-2.5 rounded-lg bg-background/50 border border-border/50 space-y-0.5">
                     <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Verified Sender</span>
                     <div className="font-mono font-semibold text-accent truncate">
-                      {emailOverview?.gateway.senderEmail || 'Crevio <onboarding@resend.dev>'}
+                      {emailOverview?.gateway.senderEmail || 'Crevio <notifications@crevio.co.in>'}
                     </div>
                   </div>
                   <div className="p-2.5 rounded-lg bg-background/50 border border-border/50 space-y-0.5">
