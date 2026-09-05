@@ -13,7 +13,9 @@ import {
   tplEscrowFunded,
   tplProofSubmitted,
   tplEscrowReleased,
-  tplCustomBroadcast
+  tplCustomBroadcast,
+  tplDisputeAlert,
+  tplSecurityAlert
 } from '../services/emailService.mjs';
 
 const router = Router();
@@ -358,6 +360,20 @@ router.get('/templates', requireAuth, requireRole('admin'), async (req, res) => 
       trigger: 'On-demand Admin broadcast',
       description: 'Custom rich announcement dispatched to all or selected users.',
       previewHtml: tplCustomBroadcast({ title: 'Platform System Update', message: 'Crevio introduces autonomous Resend mail and live telemetry.' }).html,
+    },
+    {
+      id: 'dispute_alert',
+      name: 'Dispute & Arbitration Notice',
+      trigger: 'When a brand or creator opens a dispute on an escrow milestone',
+      description: 'Alerts counterparty that funds are held in secure arbitration with case details and resolution actions.',
+      previewHtml: tplDisputeAlert({ disputeId: 'disp_9021', contractId: 'cnt_8821', raisedBy: 'Apex Sportswear', reason: 'Deliverable revisions requested.', amount: 65000 }).html,
+    },
+    {
+      id: 'security_alert',
+      name: 'Security & New Device Login',
+      trigger: 'When an account login is detected from a new IP or device',
+      description: 'Provides timestamp, device details, IP address, and immediate security action links.',
+      previewHtml: tplSecurityAlert({ userName: 'Sarah Jenkins', ipAddress: '103.21.144.12', location: 'Bengaluru, India', device: 'Chrome on macOS (Sonoma)', timestamp: new Date().toLocaleString('en-IN') }).html,
     },
   ];
 
