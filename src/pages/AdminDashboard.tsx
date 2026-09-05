@@ -22,6 +22,9 @@ import {
   apiAdminUpdateUser,
   apiAdminAdjustUserBalance,
   apiAdminDeleteUser,
+  apiAdminGetProofs,
+  apiAdminUpdateProofStatus,
+  apiAdminDeleteProof,
   apiAdminReleaseEscrow,
   apiAdminRefundEscrow,
   apiGetAdminEscrows,
@@ -36,6 +39,7 @@ import {
   AdminApplicationItem,
   AdminMessageItem,
   AdminUserItem,
+  AdminProofItem,
   ApiEscrowHolding
 } from '@/lib/api';
 import { 
@@ -70,17 +74,24 @@ import {
   XCircle,
   HelpCircle,
   Clock,
-  Instagram
+  Instagram,
+  Image as ImageIcon,
+  CheckSquare,
+  Maximize2,
+  ZoomIn,
+  BarChart3,
+  Heart
 } from 'lucide-react';
 import { toast } from 'sonner';
 import InstagramAnalyticsDashboard from '@/components/InstagramAnalyticsDashboard';
 
-type AdminTab = 'overview' | 'campaigns' | 'contracts' | 'applications' | 'messages' | 'users' | 'escrows' | 'audits' | 'instagram';
+type AdminTab = 'overview' | 'instagram' | 'campaigns' | 'contracts' | 'applications' | 'proofs' | 'messages' | 'users' | 'escrows' | 'audits';
 
 
 export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState<AdminTab>('overview');
   const [isLoading, setIsLoading] = useState(true);
+
 
   // Overview Data
   const [overviewStats, setOverviewStats] = useState<AdminOverviewStats | null>(null);
@@ -125,6 +136,14 @@ export default function AdminDashboard() {
   const [appSearch, setAppSearch] = useState('');
   const [appStatusFilter, setAppStatusFilter] = useState('all');
 
+  // Proofs & Deliverables Data & States
+  const [proofs, setProofs] = useState<AdminProofItem[]>([]);
+  const [proofSearch, setProofSearch] = useState('');
+  const [proofStatusFilter, setProofStatusFilter] = useState('all');
+  const [proofLightbox, setProofLightbox] = useState<{ url: string; title: string } | null>(null);
+  const [updatingProofId, setUpdatingProofId] = useState<string | null>(null);
+  const [adminProofFeedback, setAdminProofFeedback] = useState<{ [id: string]: string }>({});
+
   // Messages Data & States
   const [messages, setMessages] = useState<AdminMessageItem[]>([]);
   const [msgSearch, setMsgSearch] = useState('');
@@ -163,11 +182,12 @@ export default function AdminDashboard() {
   const fetchAllAdminData = async () => {
     try {
       setIsLoading(true);
-      const [overviewRes, campaignsRes, contractsRes, appsRes, msgsRes, usersRes, escrowsRes, auditRes] = await Promise.all([
+      const [overviewRes, campaignsRes, contractsRes, appsRes, proofsRes, msgsRes, usersRes, escrowsRes, auditRes] = await Promise.all([
         apiAdminGetOverview().catch(() => null),
         apiAdminGetCampaigns().catch(() => ({ campaigns: [] })),
         apiAdminGetContracts().catch(() => ({ contracts: [] })),
         apiAdminGetApplications().catch(() => ({ applications: [] })),
+        apiAdminGetProofs().catch(() => ({ proofs: [] })),
         apiAdminGetMessages().catch(() => ({ messages: [] })),
         apiAdminGetUsers().catch(() => ({ users: [] })),
         apiGetAdminEscrows().catch(() => ({ escrows: [] })),
@@ -181,6 +201,7 @@ export default function AdminDashboard() {
       if (campaignsRes) setCampaigns(campaignsRes.campaigns);
       if (contractsRes) setContracts(contractsRes.contracts);
       if (appsRes) setApplications(appsRes.applications);
+      if (proofsRes) setProofs(proofsRes.proofs);
       if (msgsRes) setMessages(msgsRes.messages);
       if (usersRes) setUsers(usersRes.users);
       if (escrowsRes) {
@@ -198,6 +219,7 @@ export default function AdminDashboard() {
       setIsLoading(false);
     }
   };
+
 
   useEffect(() => {
     fetchAllAdminData();
@@ -356,6 +378,40 @@ export default function AdminDashboard() {
       toast.error(err?.message || 'Failed to delete application');
     }
   };
+
+  // ==============================
+  // PROOF & DELIVERABLE HANDLERS
+  // ==============================
+  const handleAdminUpdateProofStatus = async (id: string, status: 'approved' | 'revision_requested' | 'rejected') => {
+    try {
+      setUpdatingProofId(id);
+      const feedback = adminProofFeedback[id] || '';
+      const res = await apiAdminUpdateProofStatus(id, { status, brand_feedback: feedback });
+      if (res.success) {
+        toast.success(`Proof submission marked as ${status.replace('_', ' ')}.`);
+        const ref = await apiAdminGetProofs();
+        setProofs(ref.proofs);
+      }
+    } catch (err: any) {
+      toast.error(err?.message || 'Failed to update proof status');
+    } finally {
+      setUpdatingProofId(null);
+    }
+  };
+
+  const handleAdminDeleteProof = async (id: string, title: string) => {
+    if (!confirm(`Are you sure you want to permanently delete proof submission for "${title}"?`)) return;
+    try {
+      const res = await apiAdminDeleteProof(id);
+      if (res.success) {
+        toast.success('Proof submission deleted.');
+        setProofs(prev => prev.filter(p => p.id !== id));
+      }
+    } catch (err: any) {
+      toast.error(err?.message || 'Failed to delete proof');
+    }
+  };
+
 
   // ==============================
   // MESSAGES & BROADCAST HANDLERS
@@ -548,6 +604,17 @@ export default function AdminDashboard() {
     return matchesQuery && matchesStatus;
   });
 
+  const filteredProofs = proofs.filter(p => {
+    const matchesQuery = !proofSearch || 
+      p.deliverable_title?.toLowerCase().includes(proofSearch.toLowerCase()) || 
+      p.creator_name?.toLowerCase().includes(proofSearch.toLowerCase()) ||
+      p.creator_email?.toLowerCase().includes(proofSearch.toLowerCase()) ||
+      p.brand_name?.toLowerCase().includes(proofSearch.toLowerCase()) ||
+      p.campaign_title?.toLowerCase().includes(proofSearch.toLowerCase());
+    const matchesStatus = proofStatusFilter === 'all' || p.status === proofStatusFilter;
+    return matchesQuery && matchesStatus;
+  });
+
   const filteredMessages = messages.filter(m => {
     const matchesQuery = !msgSearch || 
       m.message.toLowerCase().includes(msgSearch.toLowerCase()) || 
@@ -606,11 +673,13 @@ export default function AdminDashboard() {
           { id: 'campaigns', label: `Campaigns (${campaigns.length})`, icon: Briefcase },
           { id: 'contracts', label: `Contracts (${contracts.length})`, icon: FileText },
           { id: 'applications', label: `Applications (${applications.length})`, icon: CheckCircle2 },
+          { id: 'proofs', label: `Deliverable Proofs (${proofs.length})`, icon: CheckSquare },
           { id: 'messages', label: `Chat History (${messages.length})`, icon: MessageSquare },
           { id: 'users', label: `Users (${users.length})`, icon: Users },
           { id: 'escrows', label: `Escrow & Disputes (${disputes.length})`, icon: Scale },
           { id: 'audits', label: 'Audit Trail', icon: ShieldAlert },
         ].map(tab => {
+
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
           return (
@@ -1099,9 +1168,247 @@ export default function AdminDashboard() {
           )}
 
           {/* ========================================== */}
+          {/* TAB: DELIVERABLE PROOFS & INSIGHTS REVIEW */}
+          {/* ========================================== */}
+          {activeTab === 'proofs' && (
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
+              {/* Proofs Filter Bar */}
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+                <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
+                  <div className="relative w-full sm:w-72">
+                    <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                    <input
+                      type="text"
+                      placeholder="Search deliverables, creators, campaigns..."
+                      value={proofSearch}
+                      onChange={e => setProofSearch(e.target.value)}
+                      className="w-full bg-muted/40 border border-border rounded-lg pl-8 pr-3 py-1.5 text-xs focus:outline-none focus:border-accent"
+                    />
+                  </div>
+                  <select
+                    value={proofStatusFilter}
+                    onChange={e => setProofStatusFilter(e.target.value)}
+                    className="bg-muted/40 border border-border rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:border-accent"
+                  >
+                    <option value="all">All Proof Statuses ({proofs.length})</option>
+                    <option value="pending">Pending Review ({proofs.filter(p => p.status === 'pending').length})</option>
+                    <option value="approved">Approved ({proofs.filter(p => p.status === 'approved').length})</option>
+                    <option value="revision_requested">Revision Requested ({proofs.filter(p => p.status === 'revision_requested').length})</option>
+                  </select>
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  Showing <strong className="text-foreground">{filteredProofs.length}</strong> of {proofs.length} proof submissions
+                </div>
+              </div>
+
+              {/* Proofs Card Grid */}
+              {filteredProofs.length === 0 ? (
+                <div className="glass-card p-12 text-center text-muted-foreground space-y-2">
+                  <CheckSquare className="w-10 h-10 mx-auto text-muted-foreground/30 mb-2" />
+                  <p className="font-semibold text-sm">No deliverable proofs found.</p>
+                  <p className="text-xs max-w-sm mx-auto">
+                    When creators submit deliverable proofs with live links and professional dashboard screenshots, they will appear here for super-admin and brand review.
+                  </p>
+                </div>
+              ) : (
+                <div className="grid md:grid-cols-2 gap-4">
+                  {filteredProofs.map(proof => {
+                    const hasPhoto = Boolean(proof.insights_image_path || (proof.attachment_path && proof.attachment_name?.match(/\.(png|jpe?g|webp|gif)$/i)));
+                    const photoUrl = proof.insights_image_path || proof.attachment_path || '';
+
+                    return (
+                      <div key={proof.id} className="glass-card p-5 space-y-4 hover:border-border transition-all">
+                        {/* Header: Title & Status */}
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="space-y-1">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <h4 className="font-bold text-sm text-foreground">{proof.deliverable_title}</h4>
+                              <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
+                                proof.status === 'approved' ? 'bg-success/15 text-success border border-success/30' :
+                                proof.status === 'revision_requested' ? 'bg-warning/15 text-warning border border-warning/30' :
+                                'bg-primary/15 text-primary border border-primary/30'
+                              }`}>
+                                {proof.status.replace('_', ' ')}
+                              </span>
+                            </div>
+                            <p className="text-xs text-muted-foreground">
+                              Campaign: <strong className="text-foreground">{proof.campaign_title}</strong> {proof.brand_name ? `• Brand: ${proof.brand_name}` : ''}
+                            </p>
+                            <p className="text-[11px] text-muted-foreground">
+                              Creator: <strong className="text-foreground">{proof.creator_name}</strong> ({proof.creator_email})
+                            </p>
+                          </div>
+
+                          <a
+                            href={proof.live_url}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 text-xs font-semibold shrink-0"
+                          >
+                            <ExternalLink className="w-3.5 h-3.5" />
+                            Live Post
+                          </a>
+                        </div>
+
+                        {/* Photo / Insights Screenshot Preview Card */}
+                        {hasPhoto && (
+                          <div className="p-3 rounded-xl bg-muted/30 border border-border/60 flex items-center justify-between gap-3">
+                            <div className="flex items-center gap-3">
+                              <div
+                                className="relative group cursor-pointer shrink-0"
+                                onClick={() => setProofLightbox({ url: photoUrl, title: `${proof.deliverable_title} - Dashboard Insights` })}
+                              >
+                                <img
+                                  src={photoUrl}
+                                  alt="Professional Dashboard Insights"
+                                  className="w-16 h-16 sm:w-20 sm:h-20 object-cover rounded-lg border border-border shadow-sm group-hover:opacity-90 transition-opacity"
+                                />
+                                <div className="absolute inset-0 bg-black/40 rounded-lg flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity text-white">
+                                  <ZoomIn className="w-4 h-4" />
+                                </div>
+                              </div>
+                              <div className="space-y-0.5">
+                                <span className="inline-flex items-center gap-1 text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-primary/10 text-primary">
+                                  <ImageIcon className="w-3 h-3" /> Dashboard Screenshot
+                                </span>
+                                <p className="text-xs font-semibold text-foreground truncate max-w-[200px]">
+                                  {proof.insights_image_name || proof.attachment_name || 'Insights_Screenshot.png'}
+                                </p>
+                                <button
+                                  type="button"
+                                  onClick={() => setProofLightbox({ url: photoUrl, title: `${proof.deliverable_title} - Dashboard Insights` })}
+                                  className="text-[11px] text-accent hover:text-accent/80 font-semibold flex items-center gap-1 pt-0.5"
+                                >
+                                  <Eye className="w-3 h-3" /> Inspect High-Res
+                                </button>
+                              </div>
+                            </div>
+
+                            <button
+                              type="button"
+                              onClick={() => setProofLightbox({ url: photoUrl, title: `${proof.deliverable_title} - Dashboard Insights` })}
+                              className="px-2.5 py-1 text-xs bg-muted hover:bg-muted/80 rounded-lg font-medium border text-muted-foreground hover:text-foreground shrink-0 flex items-center gap-1"
+                            >
+                              <Maximize2 className="w-3.5 h-3.5" /> Fullscreen
+                            </button>
+                          </div>
+                        )}
+
+                        {/* Engagement Rate & KPI Metrics */}
+                        {(proof.engagement_rate || proof.reach_count || proof.impressions_count || proof.likes_count || proof.comments_count || proof.shares_count || proof.saves_count) && (
+                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 bg-muted/20 p-2.5 rounded-xl border border-border/40">
+                            {proof.engagement_rate && (
+                              <div className="p-1.5 rounded-lg bg-background/50 border border-border/50">
+                                <span className="text-[9px] font-semibold text-muted-foreground flex items-center gap-1">
+                                  <TrendingUp className="w-3 h-3 text-primary" /> Engagement
+                                </span>
+                                <p className="text-xs font-bold text-primary mt-0.5">{proof.engagement_rate}</p>
+                              </div>
+                            )}
+                            {proof.reach_count && (
+                              <div className="p-1.5 rounded-lg bg-background/50 border border-border/50">
+                                <span className="text-[9px] font-semibold text-muted-foreground flex items-center gap-1">
+                                  <Users className="w-3 h-3 text-cyan-400" /> Reach
+                                </span>
+                                <p className="text-xs font-bold text-foreground mt-0.5">{proof.reach_count}</p>
+                              </div>
+                            )}
+                            {proof.impressions_count && (
+                              <div className="p-1.5 rounded-lg bg-background/50 border border-border/50">
+                                <span className="text-[9px] font-semibold text-muted-foreground flex items-center gap-1">
+                                  <BarChart3 className="w-3 h-3 text-success" /> Impressions
+                                </span>
+                                <p className="text-xs font-bold text-foreground mt-0.5">{proof.impressions_count}</p>
+                              </div>
+                            )}
+                            {(proof.likes_count || proof.comments_count || proof.shares_count || proof.saves_count) && (
+                              <div className="p-1.5 rounded-lg bg-background/50 border border-border/50">
+                                <span className="text-[9px] font-semibold text-muted-foreground flex items-center gap-1">
+                                  <Heart className="w-3 h-3 text-rose-400" /> Interactions
+                                </span>
+                                <p className="text-[10px] font-semibold text-foreground mt-0.5 flex flex-wrap gap-1">
+                                  {proof.likes_count && <span>❤️{proof.likes_count}</span>}
+                                  {proof.comments_count && <span>💬{proof.comments_count}</span>}
+                                  {proof.shares_count && <span>🔁{proof.shares_count}</span>}
+                                </p>
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Overview & Notes */}
+                        {(proof.description || proof.overview_notes) && (
+                          <div className="p-2.5 rounded-lg bg-muted/15 border border-border/30 text-xs text-muted-foreground">
+                            <span className="font-bold text-[10px] uppercase text-foreground block mb-0.5">Overview & Notes:</span>
+                            <p className="line-clamp-3">{proof.overview_notes || proof.description}</p>
+                          </div>
+                        )}
+
+                        {/* Feedback if any */}
+                        {proof.brand_feedback && (
+                          <div className="p-2.5 rounded-lg bg-warning/10 border border-warning/20 text-xs text-warning">
+                            <span className="font-bold text-[10px] uppercase block mb-0.5">Revision Feedback Note:</span>
+                            <p>{proof.brand_feedback}</p>
+                          </div>
+                        )}
+
+                        {/* Admin Action Controls */}
+                        <div className="pt-2 border-t border-border/50 space-y-2">
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="text"
+                              placeholder="Add optional admin review notes..."
+                              value={adminProofFeedback[proof.id] || ''}
+                              onChange={e => setAdminProofFeedback({ ...adminProofFeedback, [proof.id]: e.target.value })}
+                              className="flex-1 bg-muted/40 border border-border rounded-lg px-2.5 py-1 text-xs focus:outline-none focus:border-accent"
+                            />
+                          </div>
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="flex items-center gap-1.5">
+                              {proof.status !== 'approved' && (
+                                <button
+                                  type="button"
+                                  disabled={updatingProofId === proof.id}
+                                  onClick={() => handleAdminUpdateProofStatus(proof.id, 'approved')}
+                                  className="px-2.5 py-1 bg-success hover:bg-success/80 text-success-foreground text-xs font-bold rounded-lg flex items-center gap-1"
+                                >
+                                  <Check className="w-3.5 h-3.5" /> Approve
+                                </button>
+                              )}
+                              {proof.status !== 'revision_requested' && (
+                                <button
+                                  type="button"
+                                  disabled={updatingProofId === proof.id}
+                                  onClick={() => handleAdminUpdateProofStatus(proof.id, 'revision_requested')}
+                                  className="px-2.5 py-1 bg-warning/20 hover:bg-warning/30 text-warning text-xs font-bold rounded-lg flex items-center gap-1"
+                                >
+                                  <AlertTriangle className="w-3.5 h-3.5" /> Request Changes
+                                </button>
+                              )}
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => handleAdminDeleteProof(proof.id, proof.deliverable_title)}
+                              className="p-1.5 hover:bg-destructive/10 text-muted-foreground hover:text-destructive rounded-lg transition-colors"
+                              title="Delete Submission Record"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </motion.div>
+          )}
+
+          {/* ========================================== */}
           {/* TAB 5: GLOBAL CHAT HISTORY & MESSAGES */}
           {/* ========================================== */}
           {activeTab === 'messages' && (
+
             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="grid md:grid-cols-3 gap-6">
               {/* Broadcast Announcement Form */}
               <div className="glass-card p-5 space-y-4 md:col-span-1 h-fit">
@@ -2039,7 +2346,58 @@ export default function AdminDashboard() {
         )}
       </AnimatePresence>
 
+      {/* Super-Admin Screenshot & Insights Lightbox Modal */}
+      {proofLightbox && (
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-in fade-in duration-200"
+          onClick={() => setProofLightbox(null)}
+        >
+          <div 
+            className="relative max-w-5xl w-full max-h-[92vh] flex flex-col items-center bg-card/95 border border-border/80 rounded-2xl shadow-2xl overflow-hidden p-4 sm:p-6"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div className="w-full flex items-center justify-between pb-3 border-b border-border/60 mb-4">
+              <div className="flex items-center gap-2">
+                <ImageIcon className="w-5 h-5 text-accent" />
+                <h3 className="font-bold text-sm sm:text-base text-foreground truncate max-w-md sm:max-w-xl">
+                  {proofLightbox.title}
+                </h3>
+              </div>
+              <div className="flex items-center gap-2">
+                <a 
+                  href={proofLightbox.url} 
+                  target="_blank" 
+                  rel="noreferrer"
+                  className="p-2 rounded-lg bg-muted/60 hover:bg-muted text-muted-foreground hover:text-foreground text-xs font-semibold flex items-center gap-1 transition-colors"
+                >
+                  <ExternalLink className="w-4 h-4" />
+                  <span className="hidden sm:inline">Open Original</span>
+                </a>
+                <button
+                  type="button"
+                  onClick={() => setProofLightbox(null)}
+                  className="p-2 rounded-lg bg-muted/60 hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+
+            {/* Modal Image Body */}
+            <div className="w-full flex-1 overflow-auto flex items-center justify-center rounded-xl bg-black/40 p-2">
+              <img 
+                src={proofLightbox.url} 
+                alt={proofLightbox.title}
+                className="max-h-[72vh] max-w-full object-contain rounded-lg shadow-lg"
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
     </DashboardLayout>
   );
 }
+
 

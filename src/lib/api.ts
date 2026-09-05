@@ -941,6 +941,16 @@ export interface ApiProofSubmission {
   description?: string;
   attachment_path?: string;
   attachment_name?: string;
+  insights_image_path?: string;
+  insights_image_name?: string;
+  engagement_rate?: string;
+  impressions_count?: string;
+  reach_count?: string;
+  likes_count?: string;
+  comments_count?: string;
+  shares_count?: string;
+  saves_count?: string;
+  overview_notes?: string;
   status: 'pending' | 'approved' | 'revision_requested' | 'rejected';
   brand_feedback?: string;
   submitted_at: string;
@@ -948,8 +958,10 @@ export interface ApiProofSubmission {
   created_at: string;
   creator_name?: string;
   creator_avatar?: string;
+  creator_email?: string;
   creator_handle?: string;
 }
+
 
 export async function apiGetCampaignProofs(campaignId: string): Promise<{ submissions: ApiProofSubmission[] }> {
   return request<{ submissions: ApiProofSubmission[] }>(`/api/campaigns/${campaignId}/proof-submissions`, 'GET');
@@ -1141,12 +1153,23 @@ export interface AdminProofItem {
   description?: string;
   attachment_path?: string;
   attachment_name?: string;
+  insights_image_path?: string;
+  insights_image_name?: string;
+  engagement_rate?: string;
+  impressions_count?: string;
+  reach_count?: string;
+  likes_count?: string;
+  comments_count?: string;
+  shares_count?: string;
+  saves_count?: string;
+  overview_notes?: string;
   status: 'pending' | 'approved' | 'revision_requested' | 'rejected';
   brand_feedback?: string;
   submitted_at: string;
   reviewed_at?: string;
   created_at: string;
 }
+
 
 // Admin Overview
 export async function apiAdminGetOverview() {

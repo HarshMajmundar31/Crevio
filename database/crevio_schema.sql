@@ -214,6 +214,47 @@ CREATE TABLE IF NOT EXISTS contract_documents (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+CREATE TABLE IF NOT EXISTS campaign_proof_submissions (
+  id TEXT PRIMARY KEY,
+  campaign_id TEXT NOT NULL REFERENCES campaigns(id) ON DELETE CASCADE,
+  creator_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  application_id TEXT REFERENCES campaign_applications(id) ON DELETE CASCADE,
+  deliverable_title TEXT NOT NULL,
+  live_url TEXT NOT NULL,
+  description TEXT,
+  attachment_path TEXT,
+  attachment_name TEXT,
+  insights_image_path TEXT,
+  insights_image_name TEXT,
+  engagement_rate TEXT,
+  impressions_count TEXT,
+  reach_count TEXT,
+  likes_count TEXT,
+  comments_count TEXT,
+  shares_count TEXT,
+  saves_count TEXT,
+  overview_notes TEXT,
+  status TEXT DEFAULT 'pending', -- 'pending', 'approved', 'revision_requested', 'rejected'
+  brand_feedback TEXT,
+  submitted_at TIMESTAMPTZ DEFAULT NOW(),
+  reviewed_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS campaign_messages (
+  id TEXT PRIMARY KEY,
+  campaign_id TEXT NOT NULL REFERENCES campaigns(id) ON DELETE CASCADE,
+  sender_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  recipient_id TEXT REFERENCES users(id) ON DELETE SET NULL,
+  sender_role TEXT DEFAULT 'creator',
+  message TEXT NOT NULL,
+  attachment_url TEXT,
+  attachment_name TEXT,
+  is_read BOOLEAN DEFAULT FALSE,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 CREATE INDEX IF NOT EXISTS idx_users_role ON users(role);
 CREATE INDEX IF NOT EXISTS idx_campaigns_brand ON campaigns(brand_id);
 CREATE INDEX IF NOT EXISTS idx_campaigns_status ON campaigns(status);
@@ -233,3 +274,8 @@ CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications(user_id);
 CREATE INDEX IF NOT EXISTS idx_contract_events_contract ON contract_events(contract_id);
 CREATE UNIQUE INDEX IF NOT EXISTS uq_contract_documents_contract ON contract_documents(contract_id);
 CREATE INDEX IF NOT EXISTS idx_contract_documents_source_sha ON contract_documents(source_sha256);
+CREATE INDEX IF NOT EXISTS idx_proof_sub_campaign ON campaign_proof_submissions(campaign_id);
+CREATE INDEX IF NOT EXISTS idx_proof_sub_creator ON campaign_proof_submissions(creator_id);
+CREATE INDEX IF NOT EXISTS idx_camp_msg_campaign ON campaign_messages(campaign_id);
+CREATE INDEX IF NOT EXISTS idx_camp_msg_created ON campaign_messages(created_at ASC);
+

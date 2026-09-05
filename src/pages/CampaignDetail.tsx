@@ -40,7 +40,8 @@ import {
   Filter, ArrowUpDown, UserCheck, Zap, Loader2, Share2, Copy, Check,
   Download, UploadCloud, Lock, Unlock, MessageSquare, Send, CheckSquare,
   FileCheck2, AlertCircle, RefreshCw, MessageCircle, Link2, Paperclip,
-  CheckCircle, HelpCircle, Layers, ArrowRight
+  CheckCircle, HelpCircle, Layers, ArrowRight, Image as ImageIcon,
+  Eye, Heart, Bookmark, ZoomIn, Maximize2, X, BarChart, FileImage
 } from 'lucide-react';
 
 export const isDirectInviteApplication = (app?: { pitch_message?: string } | null) => {
@@ -87,7 +88,7 @@ export default function CampaignDetail() {
   const [uploadingSigned, setUploadingSigned] = useState(false);
   const [lockingContract, setLockingContract] = useState(false);
 
-  // Deliverables Proof Submissions
+  // Deliverables Proof Submissions & Photo Insights
   const [submissions, setSubmissions] = useState<ApiProofSubmission[]>([]);
   const [loadingSubmissions, setLoadingSubmissions] = useState(false);
   const [submittingProof, setSubmittingProof] = useState(false);
@@ -95,8 +96,19 @@ export default function CampaignDetail() {
   const [proofUrl, setProofUrl] = useState('');
   const [proofDesc, setProofDesc] = useState('');
   const [proofFile, setProofFile] = useState<File | null>(null);
+  const [proofInsightsPhoto, setProofInsightsPhoto] = useState<File | null>(null);
+  const [proofPhotoPreview, setProofPhotoPreview] = useState<string | null>(null);
+  const [proofEngagementRate, setProofEngagementRate] = useState('');
+  const [proofImpressions, setProofImpressions] = useState('');
+  const [proofReach, setProofReach] = useState('');
+  const [proofLikes, setProofLikes] = useState('');
+  const [proofComments, setProofComments] = useState('');
+  const [proofShares, setProofShares] = useState('');
+  const [proofSaves, setProofSaves] = useState('');
   const [reviewingProofId, setReviewingProofId] = useState<string | null>(null);
   const [reviewFeedbackInput, setReviewFeedbackInput] = useState<{ [proofId: string]: string }>({});
+  const [expandedImageModal, setExpandedImageModal] = useState<{ url: string; title: string } | null>(null);
+
 
   // Collaboration & Negotiation Chat
   const [messages, setMessages] = useState<ApiCampaignMessage[]>([]);
@@ -244,6 +256,20 @@ export default function CampaignDetail() {
     }
   };
 
+  const handlePhotoSelect = (file: File | null) => {
+    if (!file) {
+      setProofInsightsPhoto(null);
+      setProofPhotoPreview(null);
+      return;
+    }
+    setProofInsightsPhoto(file);
+    const reader = new FileReader();
+    reader.onload = () => {
+      setProofPhotoPreview(reader.result as string);
+    };
+    reader.readAsDataURL(file);
+  };
+
   const handleSubmitProof = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!id || !proofTitle.trim() || !proofUrl.trim()) {
@@ -261,6 +287,18 @@ export default function CampaignDetail() {
       formData.append('deliverableTitle', proofTitle.trim());
       formData.append('liveUrl', proofUrl.trim());
       formData.append('description', proofDesc.trim());
+      if (proofEngagementRate.trim()) formData.append('engagementRate', proofEngagementRate.trim());
+      if (proofImpressions.trim()) formData.append('impressionsCount', proofImpressions.trim());
+      if (proofReach.trim()) formData.append('reachCount', proofReach.trim());
+      if (proofLikes.trim()) formData.append('likesCount', proofLikes.trim());
+      if (proofComments.trim()) formData.append('commentsCount', proofComments.trim());
+      if (proofShares.trim()) formData.append('sharesCount', proofShares.trim());
+      if (proofSaves.trim()) formData.append('savesCount', proofSaves.trim());
+      if (proofDesc.trim()) formData.append('overviewNotes', proofDesc.trim());
+
+      if (proofInsightsPhoto) {
+        formData.append('insights_photo', proofInsightsPhoto);
+      }
       if (proofFile) {
         formData.append('attachment', proofFile);
       }
@@ -268,13 +306,22 @@ export default function CampaignDetail() {
       const res = await apiSubmitCampaignProof(id, formData);
       if (res.submission) {
         toast({
-          title: '🎉 Deliverable Proof Submitted!',
-          description: `Proof for "${proofTitle}" submitted for brand review.`,
+          title: '🎉 Deliverable Proof & Insights Submitted!',
+          description: `Proof for "${proofTitle}" with professional dashboard screenshots submitted for brand review.`,
         });
         setProofTitle('');
         setProofUrl('');
         setProofDesc('');
         setProofFile(null);
+        setProofInsightsPhoto(null);
+        setProofPhotoPreview(null);
+        setProofEngagementRate('');
+        setProofImpressions('');
+        setProofReach('');
+        setProofLikes('');
+        setProofComments('');
+        setProofShares('');
+        setProofSaves('');
         await fetchSubmissions();
       }
     } catch (err: any) {
@@ -287,6 +334,7 @@ export default function CampaignDetail() {
       setSubmittingProof(false);
     }
   };
+
 
   const handleReviewProof = async (proofId: string, status: 'approved' | 'revision_requested') => {
     if (!id) return;
@@ -1693,11 +1741,14 @@ export default function CampaignDetail() {
 
                   {/* Creator Submit Proof Form */}
                   {role === 'creator' && (
-                    <Card className="p-6 border-indigo-500/30 bg-card shadow-lg space-y-5">
+                    <Card className="p-6 border-indigo-500/30 bg-card shadow-lg space-y-6">
                       <div className="flex items-center justify-between border-b border-border/50 pb-3">
                         <div className="flex items-center gap-2">
                           <UploadCloud className="w-5 h-5 text-indigo-400" />
-                          <h4 className="font-bold text-base text-foreground">Submit New Deliverable Proof</h4>
+                          <div>
+                            <h4 className="font-bold text-base text-foreground">Submit Deliverable & Insights Proof</h4>
+                            <p className="text-xs text-muted-foreground">Upload content link, performance metrics, and professional dashboard screenshots for review.</p>
+                          </div>
                         </div>
                         {isContractLocked ? (
                           <Badge className="bg-emerald-600 text-white text-[10px] font-bold">
@@ -1710,7 +1761,8 @@ export default function CampaignDetail() {
                         )}
                       </div>
 
-                      <form onSubmit={handleSubmitProof} className="space-y-4">
+                      <form onSubmit={handleSubmitProof} className="space-y-5">
+                        {/* Section 1: Milestone & Live Link */}
                         <div className="grid sm:grid-cols-2 gap-4">
                           <div>
                             <label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">
@@ -1745,7 +1797,7 @@ export default function CampaignDetail() {
 
                           <div>
                             <label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">
-                              Live Content URL (Link) *
+                              Live Content URL (Post Link) *
                             </label>
                             <div className="relative">
                               <Link2 className="w-4 h-4 text-muted-foreground absolute left-3 top-3" />
@@ -1761,27 +1813,208 @@ export default function CampaignDetail() {
                           </div>
                         </div>
 
+                        {/* Section 2: Photo Submission - Insights & Professional Dashboard Screenshot */}
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between">
+                            <label className="text-xs font-bold text-foreground uppercase tracking-wider flex items-center gap-1.5">
+                              <ImageIcon className="w-4 h-4 text-indigo-400" />
+                              Insights & Professional Dashboard Photo / Screenshot
+                            </label>
+                            <span className="text-[11px] text-indigo-400 font-medium">Recommended for Brand & Admin Review</span>
+                          </div>
+
+                          {!proofPhotoPreview ? (
+                            <label className="group relative border-2 border-dashed border-indigo-500/30 hover:border-indigo-500/60 rounded-xl p-6 flex flex-col items-center justify-center cursor-pointer bg-indigo-500/5 hover:bg-indigo-500/10 transition-all text-center">
+                              <div className="w-12 h-12 rounded-full bg-indigo-500/10 flex items-center justify-center text-indigo-400 group-hover:scale-110 transition-transform mb-2">
+                                <FileImage className="w-6 h-6" />
+                              </div>
+                              <p className="font-semibold text-sm text-foreground">
+                                Click or drag & drop Insights / Dashboard screenshot
+                              </p>
+                              <p className="text-xs text-muted-foreground mt-1 max-w-md">
+                                Upload screenshots of your Instagram / YouTube / TikTok Professional Dashboard & Content Insights showing total Reach, Impressions, and Engagement Rate.
+                              </p>
+                              <p className="text-[10px] text-muted-foreground/80 mt-2 font-mono">
+                                Supports PNG, JPG, JPEG, WEBP (Max 25MB)
+                              </p>
+                              <input 
+                                type="file" 
+                                className="hidden" 
+                                accept="image/png,image/jpeg,image/jpg,image/webp"
+                                onChange={(e) => handlePhotoSelect(e.target.files?.[0] || null)}
+                              />
+                            </label>
+                          ) : (
+                            <div className="p-4 rounded-xl border border-indigo-500/40 bg-indigo-500/5 flex flex-wrap items-center justify-between gap-4">
+                              <div className="flex items-center gap-3">
+                                <div className="relative group cursor-pointer" onClick={() => setExpandedImageModal({ url: proofPhotoPreview, title: proofInsightsPhoto?.name || 'Insights Screenshot' })}>
+                                  <img 
+                                    src={proofPhotoPreview} 
+                                    alt="Insights Screenshot Preview" 
+                                    className="w-20 h-20 object-cover rounded-lg border border-border/80 shadow-md group-hover:opacity-90 transition-opacity" 
+                                  />
+                                  <div className="absolute inset-0 bg-black/40 rounded-lg flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity text-white">
+                                    <ZoomIn className="w-5 h-5" />
+                                  </div>
+                                </div>
+                                <div className="space-y-1">
+                                  <div className="flex items-center gap-1.5">
+                                    <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                                    <p className="font-bold text-sm text-foreground">{proofInsightsPhoto?.name}</p>
+                                  </div>
+                                  <p className="text-xs text-muted-foreground">
+                                    {proofInsightsPhoto ? `${(proofInsightsPhoto.size / 1024 / 1024).toFixed(2)} MB • Ready for submission` : ''}
+                                  </p>
+                                  <button
+                                    type="button"
+                                    onClick={() => setExpandedImageModal({ url: proofPhotoPreview, title: proofInsightsPhoto?.name || 'Insights Screenshot' })}
+                                    className="text-[11px] text-indigo-400 hover:text-indigo-300 font-semibold flex items-center gap-1"
+                                  >
+                                    <Eye className="w-3 h-3" /> Preview Full Screenshot
+                                  </button>
+                                </div>
+                              </div>
+
+                              <div className="flex items-center gap-2">
+                                <label className="cursor-pointer px-3 py-1.5 rounded-lg bg-muted/60 hover:bg-muted text-xs font-semibold text-foreground border border-border/60 transition-colors">
+                                  Change Photo
+                                  <input 
+                                    type="file" 
+                                    className="hidden" 
+                                    accept="image/png,image/jpeg,image/jpg,image/webp"
+                                    onChange={(e) => handlePhotoSelect(e.target.files?.[0] || null)}
+                                  />
+                                </label>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handlePhotoSelect(null)}
+                                  className="text-xs text-destructive hover:text-destructive hover:bg-destructive/10 h-8"
+                                >
+                                  <X className="w-3.5 h-3.5 mr-1" /> Remove
+                                </Button>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Section 3: Engagement Metrics Inputs */}
+                        <div className="space-y-2">
+                          <label className="block text-xs font-bold text-foreground uppercase tracking-wider">
+                            Content Insights & Performance Overview (Optional)
+                          </label>
+                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                            <div className="p-3 rounded-xl bg-muted/30 border border-border/50 space-y-1">
+                              <span className="text-[11px] font-semibold text-muted-foreground flex items-center gap-1">
+                                <TrendingUp className="w-3.5 h-3.5 text-indigo-400" /> Engagement Rate
+                              </span>
+                              <input 
+                                type="text"
+                                placeholder="e.g. 5.8%"
+                                value={proofEngagementRate}
+                                onChange={(e) => setProofEngagementRate(e.target.value)}
+                                className="w-full h-8 px-2 rounded-md bg-background/80 border border-border text-xs font-bold text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                              />
+                            </div>
+
+                            <div className="p-3 rounded-xl bg-muted/30 border border-border/50 space-y-1">
+                              <span className="text-[11px] font-semibold text-muted-foreground flex items-center gap-1">
+                                <Users className="w-3.5 h-3.5 text-cyan-400" /> Total Reach
+                              </span>
+                              <input 
+                                type="text"
+                                placeholder="e.g. 38,400"
+                                value={proofReach}
+                                onChange={(e) => setProofReach(e.target.value)}
+                                className="w-full h-8 px-2 rounded-md bg-background/80 border border-border text-xs font-bold text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                              />
+                            </div>
+
+                            <div className="p-3 rounded-xl bg-muted/30 border border-border/50 space-y-1">
+                              <span className="text-[11px] font-semibold text-muted-foreground flex items-center gap-1">
+                                <BarChart3 className="w-3.5 h-3.5 text-emerald-400" /> Impressions
+                              </span>
+                              <input 
+                                type="text"
+                                placeholder="e.g. 45,200"
+                                value={proofImpressions}
+                                onChange={(e) => setProofImpressions(e.target.value)}
+                                className="w-full h-8 px-2 rounded-md bg-background/80 border border-border text-xs font-bold text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                              />
+                            </div>
+
+                            <div className="p-3 rounded-xl bg-muted/30 border border-border/50 space-y-1">
+                              <span className="text-[11px] font-semibold text-muted-foreground flex items-center gap-1">
+                                <Heart className="w-3.5 h-3.5 text-rose-400" /> Likes / Reactions
+                              </span>
+                              <input 
+                                type="text"
+                                placeholder="e.g. 2,850"
+                                value={proofLikes}
+                                onChange={(e) => setProofLikes(e.target.value)}
+                                className="w-full h-8 px-2 rounded-md bg-background/80 border border-border text-xs font-bold text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                              />
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-3 gap-3 pt-1">
+                            <div>
+                              <span className="text-[10px] text-muted-foreground block mb-1">Comments Count</span>
+                              <input 
+                                type="text"
+                                placeholder="e.g. 320"
+                                value={proofComments}
+                                onChange={(e) => setProofComments(e.target.value)}
+                                className="w-full h-7 px-2 rounded-md bg-muted/30 border border-border text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                              />
+                            </div>
+                            <div>
+                              <span className="text-[10px] text-muted-foreground block mb-1">Shares Count</span>
+                              <input 
+                                type="text"
+                                placeholder="e.g. 140"
+                                value={proofShares}
+                                onChange={(e) => setProofShares(e.target.value)}
+                                className="w-full h-7 px-2 rounded-md bg-muted/30 border border-border text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                              />
+                            </div>
+                            <div>
+                              <span className="text-[10px] text-muted-foreground block mb-1">Saves / Bookmarks</span>
+                              <input 
+                                type="text"
+                                placeholder="e.g. 480"
+                                value={proofSaves}
+                                onChange={(e) => setProofSaves(e.target.value)}
+                                className="w-full h-7 px-2 rounded-md bg-muted/30 border border-border text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                              />
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Section 4: Performance & Overview Notes */}
                         <div>
                           <label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">
-                            Description, Metrics & Notes (Optional)
+                            Performance Overview, Campaign Hashtags & Notes
                           </label>
                           <textarea 
                             rows={3}
                             className="w-full p-3 rounded-lg bg-muted/40 border border-border/60 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-                            placeholder="Add details about the post, hashtags used, initial view count, or impressions reached..."
+                            placeholder="Add details about engagement highlights, peak traffic times, viral spikes, or audience retention notes..."
                             value={proofDesc}
                             onChange={(e) => setProofDesc(e.target.value)}
                           />
                         </div>
 
-                        <div className="flex flex-wrap items-center justify-between gap-4 pt-2">
+                        {/* Footer: Additional file + Submit button */}
+                        <div className="flex flex-wrap items-center justify-between gap-4 pt-3 border-t border-border/50">
                           <label className="cursor-pointer flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground">
                             <Paperclip className="w-4 h-4 text-indigo-400" />
-                            <span>{proofFile ? `Attached: ${proofFile.name}` : 'Attach Screenshot Proof (Optional)'}</span>
+                            <span>{proofFile ? `Attached File: ${proofFile.name}` : 'Attach Additional PDF / Report (Optional)'}</span>
                             <input 
                               type="file" 
                               className="hidden" 
-                              accept="image/*,.pdf"
+                              accept="image/*,.pdf,.doc,.docx"
                               onChange={(e) => setProofFile(e.target.files?.[0] || null)}
                             />
                           </label>
@@ -1813,126 +2046,225 @@ export default function CampaignDetail() {
                         <CheckSquare className="w-10 h-10 mx-auto text-muted-foreground/40 mb-2" />
                         <p className="font-semibold">No deliverable proofs submitted yet.</p>
                         <p className="text-xs max-w-sm mx-auto">
-                          Once the creator completes deliverables, submit the live link and task proof here for review and milestone approval.
+                          Once the creator completes deliverables, submit the live link, performance overview, and insights screenshots here for review and milestone approval.
                         </p>
                       </Card>
                     ) : (
-                      submissions.map((sub) => (
-                        <Card key={sub.id} className="p-5 border-border/50 bg-card/60 space-y-4 hover:border-border transition-all">
-                          <div className="flex flex-wrap items-start justify-between gap-4">
-                            <div>
-                              <div className="flex flex-wrap items-center gap-2 mb-1">
-                                <span className="font-bold text-base text-foreground">{sub.deliverable_title}</span>
-                                {sub.status === 'approved' ? (
-                                  <Badge className="bg-emerald-600 text-white font-semibold text-xs gap-1">
-                                    <CheckCircle2 className="w-3 h-3" /> Approved
-                                  </Badge>
-                                ) : sub.status === 'revision_requested' ? (
-                                  <Badge variant="outline" className="border-amber-500/50 text-amber-400 bg-amber-500/10 font-semibold text-xs gap-1">
-                                    <AlertCircle className="w-3 h-3" /> Changes Requested
-                                  </Badge>
-                                ) : (
-                                  <Badge variant="outline" className="border-indigo-500/50 text-indigo-400 bg-indigo-500/10 font-semibold text-xs gap-1">
-                                    <Clock className="w-3 h-3" /> Pending Brand Review
-                                  </Badge>
-                                )}
+                      submissions.map((sub) => {
+                        const hasPhoto = Boolean(sub.insights_image_path || (sub.attachment_path && sub.attachment_name?.match(/\.(png|jpe?g|webp|gif)$/i)));
+                        const photoUrl = sub.insights_image_path || sub.attachment_path || '';
+
+                        return (
+                          <Card key={sub.id} className="p-5 border-border/50 bg-card/60 space-y-4 hover:border-border transition-all">
+                            <div className="flex flex-wrap items-start justify-between gap-4">
+                              <div>
+                                <div className="flex flex-wrap items-center gap-2 mb-1">
+                                  <span className="font-bold text-base text-foreground">{sub.deliverable_title}</span>
+                                  {sub.status === 'approved' ? (
+                                    <Badge className="bg-emerald-600 text-white font-semibold text-xs gap-1">
+                                      <CheckCircle2 className="w-3 h-3" /> Approved
+                                    </Badge>
+                                  ) : sub.status === 'revision_requested' ? (
+                                    <Badge variant="outline" className="border-amber-500/50 text-amber-400 bg-amber-500/10 font-semibold text-xs gap-1">
+                                      <AlertCircle className="w-3 h-3" /> Changes Requested
+                                    </Badge>
+                                  ) : (
+                                    <Badge variant="outline" className="border-indigo-500/50 text-indigo-400 bg-indigo-500/10 font-semibold text-xs gap-1">
+                                      <Clock className="w-3 h-3" /> Pending Brand Review
+                                    </Badge>
+                                  )}
+                                </div>
+                                <p className="text-xs text-muted-foreground">
+                                  Submitted {sub.creator_name ? `by ${sub.creator_name}` : ''} on {new Date(sub.submitted_at).toLocaleString()}
+                                </p>
                               </div>
-                              <p className="text-xs text-muted-foreground">
-                                Submitted {sub.creator_name ? `by ${sub.creator_name}` : ''} on {new Date(sub.submitted_at).toLocaleString()}
-                              </p>
-                            </div>
 
-                            <div className="flex flex-wrap items-center gap-2">
-                              <a 
-                                href={sub.live_url} 
-                                target="_blank" 
-                                rel="noreferrer"
-                                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 text-xs font-semibold transition-colors"
-                              >
-                                <ExternalLink className="w-3.5 h-3.5" />
-                                View Live Content Link
-                              </a>
-                            </div>
-                          </div>
-
-                          {sub.description && (
-                            <p className="text-xs text-muted-foreground bg-muted/20 p-3 rounded-lg border border-border/40">
-                              {sub.description}
-                            </p>
-                          )}
-
-                          {/* Brand Feedback Box */}
-                          {sub.brand_feedback && (
-                            <div className="p-3.5 rounded-lg bg-amber-950/20 border border-amber-500/30 text-xs space-y-1">
-                              <div className="flex items-center gap-1.5 font-bold text-amber-400">
-                                <AlertCircle className="w-4 h-4" /> Brand Revision Feedback:
-                              </div>
-                              <p className="text-foreground leading-relaxed pl-5">
-                                "{sub.brand_feedback}"
-                              </p>
-                              <div className="pt-2 pl-5">
-                                <Button 
-                                  size="sm" 
-                                  variant="outline" 
-                                  className="text-xs border-amber-500/40 text-amber-300 hover:bg-amber-500/10 gap-1"
-                                  onClick={() => setActiveTab('chat')}
-                                >
-                                  <MessageSquare className="w-3.5 h-3.5" /> Negotiate / Chat with Brand
-                                </Button>
-                              </div>
-                            </div>
-                          )}
-
-                          {/* Brand Review Actions (Brand Side) */}
-                          {(role === 'brand' || role === 'admin') && sub.status === 'pending' && (
-                            <div className="pt-3 border-t border-border/40 space-y-3">
                               <div className="flex flex-wrap items-center gap-2">
-                                <Button
-                                  size="sm"
-                                  className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs gap-1.5"
-                                  onClick={() => handleReviewProof(sub.id, 'approved')}
-                                  disabled={reviewingProofId === sub.id}
+                                <a 
+                                  href={sub.live_url} 
+                                  target="_blank" 
+                                  rel="noreferrer"
+                                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 text-xs font-semibold transition-colors"
                                 >
-                                  {reviewingProofId === sub.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
-                                  Approve Proof & Milestone
-                                </Button>
+                                  <ExternalLink className="w-3.5 h-3.5" />
+                                  View Live Content Link
+                                </a>
+                              </div>
+                            </div>
+
+                            {/* Submitted Photo / Insights Screenshot Display */}
+                            {hasPhoto && (
+                              <div className="p-3.5 rounded-xl bg-indigo-500/5 border border-indigo-500/20 flex flex-wrap items-center justify-between gap-4">
+                                <div className="flex items-center gap-3">
+                                  <div 
+                                    className="relative group cursor-pointer"
+                                    onClick={() => setExpandedImageModal({ url: photoUrl, title: `${sub.deliverable_title} - Professional Dashboard & Insights` })}
+                                  >
+                                    <img 
+                                      src={photoUrl} 
+                                      alt="Insights Dashboard Screenshot" 
+                                      className="w-24 h-24 sm:w-28 sm:h-28 object-cover rounded-lg border border-indigo-500/30 shadow-md group-hover:opacity-90 transition-opacity" 
+                                    />
+                                    <div className="absolute inset-0 bg-black/40 rounded-lg flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity text-white">
+                                      <Maximize2 className="w-5 h-5" />
+                                    </div>
+                                  </div>
+                                  <div className="space-y-1">
+                                    <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-indigo-500/20 text-indigo-300">
+                                      <ImageIcon className="w-3 h-3" /> Professional Dashboard & Insights Proof
+                                    </span>
+                                    <p className="text-xs font-bold text-foreground">
+                                      {sub.insights_image_name || sub.attachment_name || 'Insights_Screenshot.png'}
+                                    </p>
+                                    <p className="text-[11px] text-muted-foreground">
+                                      Uploaded for engagement rate, impressions, and overview review.
+                                    </p>
+                                    <button
+                                      type="button"
+                                      onClick={() => setExpandedImageModal({ url: photoUrl, title: `${sub.deliverable_title} - Insights Screenshot` })}
+                                      className="text-xs text-indigo-400 hover:text-indigo-300 font-semibold flex items-center gap-1 pt-1"
+                                    >
+                                      <ZoomIn className="w-3.5 h-3.5" /> Click to Zoom Full Screenshot
+                                    </button>
+                                  </div>
+                                </div>
 
                                 <Button
                                   size="sm"
                                   variant="outline"
-                                  className="text-amber-400 border-amber-500/40 hover:bg-amber-500/10 font-bold text-xs gap-1.5"
-                                  onClick={() => handleReviewProof(sub.id, 'revision_requested')}
-                                  disabled={reviewingProofId === sub.id}
+                                  className="text-xs border-indigo-500/30 text-indigo-300 hover:bg-indigo-500/10 gap-1.5"
+                                  onClick={() => setExpandedImageModal({ url: photoUrl, title: `${sub.deliverable_title} - Insights Screenshot` })}
                                 >
-                                  <AlertCircle className="w-3.5 h-3.5" />
-                                  Request Changes / Revision
-                                </Button>
-
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  className="text-xs font-semibold text-primary ml-auto gap-1"
-                                  onClick={() => setActiveTab('chat')}
-                                >
-                                  <MessageSquare className="w-3.5 h-3.5" /> Chat
+                                  <Eye className="w-3.5 h-3.5" /> Inspect Insights
                                 </Button>
                               </div>
+                            )}
 
-                              <input 
-                                type="text"
-                                className="w-full h-8 px-3 rounded-lg bg-muted/30 border border-border/50 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none"
-                                placeholder="Add optional revision feedback notes for creator before clicking Request Changes..."
-                                value={reviewFeedbackInput[sub.id] || ''}
-                                onChange={(e) => setReviewFeedbackInput(prev => ({ ...prev, [sub.id]: e.target.value }))}
-                              />
-                            </div>
-                          )}
-                        </Card>
-                      ))
+                            {/* Key Performance Metrics Overview Grid */}
+                            {(sub.engagement_rate || sub.impressions_count || sub.reach_count || sub.likes_count || sub.comments_count || sub.shares_count || sub.saves_count) && (
+                              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 bg-muted/25 p-3 rounded-xl border border-border/40">
+                                {sub.engagement_rate && (
+                                  <div className="p-2 rounded-lg bg-background/50 border border-border/50">
+                                    <span className="text-[10px] font-semibold text-muted-foreground flex items-center gap-1">
+                                      <TrendingUp className="w-3 h-3 text-indigo-400" /> Engagement Rate
+                                    </span>
+                                    <p className="text-sm font-bold text-indigo-400 mt-0.5">{sub.engagement_rate}</p>
+                                  </div>
+                                )}
+                                {sub.reach_count && (
+                                  <div className="p-2 rounded-lg bg-background/50 border border-border/50">
+                                    <span className="text-[10px] font-semibold text-muted-foreground flex items-center gap-1">
+                                      <Users className="w-3 h-3 text-cyan-400" /> Total Reach
+                                    </span>
+                                    <p className="text-sm font-bold text-foreground mt-0.5">{sub.reach_count}</p>
+                                  </div>
+                                )}
+                                {sub.impressions_count && (
+                                  <div className="p-2 rounded-lg bg-background/50 border border-border/50">
+                                    <span className="text-[10px] font-semibold text-muted-foreground flex items-center gap-1">
+                                      <BarChart3 className="w-3 h-3 text-emerald-400" /> Impressions
+                                    </span>
+                                    <p className="text-sm font-bold text-foreground mt-0.5">{sub.impressions_count}</p>
+                                  </div>
+                                )}
+                                {(sub.likes_count || sub.comments_count || sub.shares_count || sub.saves_count) && (
+                                  <div className="p-2 rounded-lg bg-background/50 border border-border/50">
+                                    <span className="text-[10px] font-semibold text-muted-foreground flex items-center gap-1">
+                                      <Heart className="w-3 h-3 text-rose-400" /> Interactions
+                                    </span>
+                                    <p className="text-xs font-semibold text-foreground mt-0.5 flex flex-wrap gap-1.5">
+                                      {sub.likes_count && <span>❤️ {sub.likes_count}</span>}
+                                      {sub.comments_count && <span>💬 {sub.comments_count}</span>}
+                                      {sub.shares_count && <span>🔁 {sub.shares_count}</span>}
+                                      {sub.saves_count && <span>🔖 {sub.saves_count}</span>}
+                                    </p>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+
+                            {/* Overview / Description */}
+                            {(sub.description || sub.overview_notes) && (
+                              <div className="p-3 rounded-lg bg-muted/20 border border-border/40 text-xs text-muted-foreground space-y-1">
+                                <span className="font-semibold text-[11px] text-foreground uppercase tracking-wider">Performance Overview & Notes:</span>
+                                <p className="leading-relaxed">{sub.overview_notes || sub.description}</p>
+                              </div>
+                            )}
+
+                            {/* Brand Feedback Box */}
+                            {sub.brand_feedback && (
+                              <div className="p-3.5 rounded-lg bg-amber-950/20 border border-amber-500/30 text-xs space-y-1">
+                                <div className="flex items-center gap-1.5 font-bold text-amber-400">
+                                  <AlertCircle className="w-4 h-4" /> Brand Revision Feedback:
+                                </div>
+                                <p className="text-foreground leading-relaxed pl-5">
+                                  "{sub.brand_feedback}"
+                                </p>
+                                <div className="pt-2 pl-5">
+                                  <Button 
+                                    size="sm" 
+                                    variant="outline" 
+                                    className="text-xs border-amber-500/40 text-amber-300 hover:bg-amber-500/10 gap-1"
+                                    onClick={() => setActiveTab('chat')}
+                                  >
+                                    <MessageSquare className="w-3.5 h-3.5" /> Negotiate / Chat with Brand
+                                  </Button>
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Brand Review Actions (Brand Side) */}
+                            {(role === 'brand' || role === 'admin') && sub.status === 'pending' && (
+                              <div className="pt-3 border-t border-border/40 space-y-3">
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <Button
+                                    size="sm"
+                                    className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs gap-1.5"
+                                    onClick={() => handleReviewProof(sub.id, 'approved')}
+                                    disabled={reviewingProofId === sub.id}
+                                  >
+                                    {reviewingProofId === sub.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
+                                    Approve Proof & Milestone
+                                  </Button>
+
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="text-amber-400 border-amber-500/40 hover:bg-amber-500/10 font-bold text-xs gap-1.5"
+                                    onClick={() => handleReviewProof(sub.id, 'revision_requested')}
+                                    disabled={reviewingProofId === sub.id}
+                                  >
+                                    <AlertCircle className="w-3.5 h-3.5" />
+                                    Request Changes / Revision
+                                  </Button>
+
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    className="text-xs font-semibold text-primary ml-auto gap-1"
+                                    onClick={() => setActiveTab('chat')}
+                                  >
+                                    <MessageSquare className="w-3.5 h-3.5" /> Chat
+                                  </Button>
+                                </div>
+
+                                <input 
+                                  type="text"
+                                  className="w-full h-8 px-3 rounded-lg bg-muted/30 border border-border/50 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none"
+                                  placeholder="Add optional revision feedback notes for creator before clicking Request Changes..."
+                                  value={reviewFeedbackInput[sub.id] || ''}
+                                  onChange={(e) => setReviewFeedbackInput(prev => ({ ...prev, [sub.id]: e.target.value }))}
+                                />
+                              </div>
+                            )}
+                          </Card>
+                        );
+                      })
                     )}
                   </div>
                 </div>
               )}
+
 
               {/* ========================================================================= */}
               {/* CHAT TAB (Negotiation & Real-Time Collaboration)                        */}
@@ -2543,6 +2875,59 @@ export default function CampaignDetail() {
         </div>
 
       </div>
+
+
+
+      {/* Full-Screen Screenshot & Insights Lightbox Modal */}
+      {expandedImageModal && (
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-in fade-in duration-200"
+          onClick={() => setExpandedImageModal(null)}
+        >
+          <div 
+            className="relative max-w-5xl w-full max-h-[92vh] flex flex-col items-center bg-card/95 border border-border/80 rounded-2xl shadow-2xl overflow-hidden p-4 sm:p-6"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div className="w-full flex items-center justify-between pb-3 border-b border-border/60 mb-4">
+              <div className="flex items-center gap-2">
+                <ImageIcon className="w-5 h-5 text-indigo-400" />
+                <h3 className="font-bold text-sm sm:text-base text-foreground truncate max-w-md sm:max-w-xl">
+                  {expandedImageModal.title}
+                </h3>
+              </div>
+              <div className="flex items-center gap-2">
+                <a 
+                  href={expandedImageModal.url} 
+                  target="_blank" 
+                  rel="noreferrer"
+                  className="p-2 rounded-lg bg-muted/60 hover:bg-muted text-muted-foreground hover:text-foreground text-xs font-semibold flex items-center gap-1 transition-colors"
+                >
+                  <ExternalLink className="w-4 h-4" />
+                  <span className="hidden sm:inline">Open Original</span>
+                </a>
+                <button
+                  type="button"
+                  onClick={() => setExpandedImageModal(null)}
+                  className="p-2 rounded-lg bg-muted/60 hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+
+            {/* Modal Image Body */}
+            <div className="w-full flex-1 overflow-auto flex items-center justify-center rounded-xl bg-black/40 p-2">
+              <img 
+                src={expandedImageModal.url} 
+                alt={expandedImageModal.title}
+                className="max-h-[72vh] max-w-full object-contain rounded-lg shadow-lg"
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </DashboardLayout>
   );
 }
+

@@ -9,7 +9,29 @@ import { broadcastEvent } from '../lib/socket.mjs';
 import OpenAI from 'openai';
 
 const router = Router();
-const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 15 * 1024 * 1024 } });
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 25 * 1024 * 1024 } });
+
+// Idempotent column check for insights photo and engagement metrics
+async function ensureProofSubmissionsColumns() {
+  try {
+    await query(`
+      ALTER TABLE campaign_proof_submissions 
+      ADD COLUMN IF NOT EXISTS insights_image_path TEXT,
+      ADD COLUMN IF NOT EXISTS insights_image_name TEXT,
+      ADD COLUMN IF NOT EXISTS engagement_rate TEXT,
+      ADD COLUMN IF NOT EXISTS impressions_count TEXT,
+      ADD COLUMN IF NOT EXISTS reach_count TEXT,
+      ADD COLUMN IF NOT EXISTS likes_count TEXT,
+      ADD COLUMN IF NOT EXISTS comments_count TEXT,
+      ADD COLUMN IF NOT EXISTS shares_count TEXT,
+      ADD COLUMN IF NOT EXISTS saves_count TEXT,
+      ADD COLUMN IF NOT EXISTS overview_notes TEXT;
+    `);
+  } catch (err) {
+    // Column check fallback ignored
+  }
+}
+ensureProofSubmissionsColumns();
 
 let openaiClient = null;
 
@@ -799,7 +821,11 @@ router.get('/:id/proof-submissions', requireAuth, async (req, res) => {
   let querySql = `
     SELECT p.id, p.campaign_id, p.creator_id, p.application_id,
            p.deliverable_title, p.live_url, p.description,
-           p.attachment_path, p.attachment_name, p.status,
+           p.attachment_path, p.attachment_name,
+           p.insights_image_path, p.insights_image_name,
+           p.engagement_rate, p.impressions_count, p.reach_count,
+           p.likes_count, p.comments_count, p.shares_count, p.saves_count,
+           p.overview_notes, p.status,
            p.brand_feedback, p.submitted_at, p.reviewed_at, p.created_at,
            u.full_name AS creator_name, u.avatar_url AS creator_avatar,
            u.email AS creator_email
@@ -820,10 +846,22 @@ router.get('/:id/proof-submissions', requireAuth, async (req, res) => {
   return res.json({ submissions: result.rows });
 });
 
-// POST /api/campaigns/:id/proof-submissions - Creator submits proof of work
-router.post('/:id/proof-submissions', requireAuth, requireRole('creator'), upload.single('attachment'), async (req, res) => {
+// POST /api/campaigns/:id/proof-submissions - Creator submits proof of work with insights & photo
+router.post('/:id/proof-submissions', requireAuth, requireRole('creator'), upload.any(), async (req, res) => {
   const campaignId = req.params.id;
-  const { deliverableTitle, liveUrl, description } = req.body || {};
+  const { 
+    deliverableTitle, 
+    liveUrl, 
+    description,
+    engagementRate,
+    impressionsCount,
+    reachCount,
+    likesCount,
+    commentsCount,
+    sharesCount,
+    savesCount,
+    overviewNotes
+  } = req.body || {};
 
   if (!deliverableTitle || !liveUrl) {
     return res.status(400).json({ error: 'Deliverable title and live content URL are required' });
@@ -831,15 +869,49 @@ router.post('/:id/proof-submissions', requireAuth, requireRole('creator'), uploa
 
   let attachmentPath = null;
   let attachmentName = null;
+  let insightsImagePath = null;
+  let insightsImageName = null;
 
-  if (req.file) {
+  const files = req.files || (req.file ? [req.file] : []);
+  if (files.length > 0) {
     const proofsDir = path.join(process.cwd(), 'uploads', 'proof_attachments');
     fs.mkdirSync(proofsDir, { recursive: true });
-    const sanitized = (req.file.originalname || 'proof_image.png').replace(/[^a-zA-Z0-9._-]/g, '_');
-    const diskName = `${campaignId}_${req.user.userId}_${Date.now()}_${sanitized}`;
-    attachmentPath = path.join(proofsDir, diskName);
-    attachmentName = req.file.originalname;
-    fs.writeFileSync(attachmentPath, req.file.buffer);
+
+    for (const file of files) {
+      const sanitized = (file.originalname || 'proof_image.png').replace(/[^a-zA-Z0-9._-]/g, '_');
+      const diskName = `${campaignId}_${req.user.userId}_${Date.now()}_${sanitized}`;
+      const savedPath = path.join(proofsDir, diskName);
+      fs.writeFileSync(savedPath, file.buffer);
+      const relativeWebPath = `/uploads/proof_attachments/${diskName}`;
+
+      if (file.fieldname === 'insights_photo' || file.fieldname === 'photo' || file.fieldname === 'insightsImage') {
+        insightsImagePath = relativeWebPath;
+        insightsImageName = file.originalname;
+      } else if (file.fieldname === 'attachment') {
+        attachmentPath = relativeWebPath;
+        attachmentName = file.originalname;
+      } else {
+        // Fallback: if image, prioritize as insights photo
+        if (!insightsImagePath && file.mimetype && file.mimetype.startsWith('image/')) {
+          insightsImagePath = relativeWebPath;
+          insightsImageName = file.originalname;
+        }
+        if (!attachmentPath) {
+          attachmentPath = relativeWebPath;
+          attachmentName = file.originalname;
+        }
+      }
+    }
+  }
+
+  // Ensure both paths are populated gracefully if only one file is uploaded
+  if (insightsImagePath && !attachmentPath) {
+    attachmentPath = insightsImagePath;
+    attachmentName = insightsImageName;
+  }
+  if (attachmentPath && !insightsImagePath && attachmentName && attachmentName.match(/\.(png|jpe?g|webp|gif|svg)$/i)) {
+    insightsImagePath = attachmentPath;
+    insightsImageName = attachmentName;
   }
 
   const appResult = await query(
@@ -852,9 +924,12 @@ router.post('/:id/proof-submissions', requireAuth, requireRole('creator'), uploa
   const insertResult = await query(
     `INSERT INTO campaign_proof_submissions (
        id, campaign_id, creator_id, application_id, deliverable_title,
-       live_url, description, attachment_path, attachment_name, status
+       live_url, description, attachment_path, attachment_name,
+       insights_image_path, insights_image_name, engagement_rate,
+       impressions_count, reach_count, likes_count, comments_count,
+       shares_count, saves_count, overview_notes, status
      )
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'pending')
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, 'pending')
      RETURNING *`,
     [
       proofId,
@@ -865,7 +940,17 @@ router.post('/:id/proof-submissions', requireAuth, requireRole('creator'), uploa
       liveUrl,
       description || '',
       attachmentPath,
-      attachmentName
+      attachmentName,
+      insightsImagePath,
+      insightsImageName,
+      engagementRate || null,
+      impressionsCount || null,
+      reachCount || null,
+      likesCount || null,
+      commentsCount || null,
+      sharesCount || null,
+      savesCount || null,
+      overviewNotes || null
     ]
   );
 
@@ -877,7 +962,7 @@ router.post('/:id/proof-submissions', requireAuth, requireRole('creator'), uploa
   if (campaign) {
     const notifId = createId('notif');
     const title = 'New Deliverable Proof Submitted 📋';
-    const message = `A creator has submitted proof for "${deliverableTitle}" on campaign ${campaign.title}. Please review and approve.`;
+    const message = `A creator has submitted proof with insights screenshots for "${deliverableTitle}" on campaign ${campaign.title}. Please review engagement metrics and approve.`;
     await query(
       `INSERT INTO notifications (id, user_id, title, message)
        VALUES ($1, $2, $3, $4)`,
@@ -899,6 +984,37 @@ router.post('/:id/proof-submissions', requireAuth, requireRole('creator'), uploa
   });
 
   return res.status(201).json({ submission });
+});
+
+// GET /api/campaigns/:id/proof-submissions/:proofId/file/:fileType - View/stream uploaded proof attachment or insights photo
+router.get('/:id/proof-submissions/:proofId/file/:fileType', async (req, res) => {
+  const { id: campaignId, proofId, fileType } = req.params;
+  const result = await query(
+    'SELECT attachment_path, insights_image_path, attachment_name, insights_image_name FROM campaign_proof_submissions WHERE id = $1 AND campaign_id = $2',
+    [proofId, campaignId]
+  );
+  const proof = result.rows[0];
+  if (!proof) {
+    return res.status(404).json({ error: 'Proof submission not found' });
+  }
+
+  let filePath = (fileType === 'insights' || fileType === 'photo') ? proof.insights_image_path : proof.attachment_path;
+  if (!filePath) {
+    filePath = proof.attachment_path || proof.insights_image_path;
+  }
+  if (!filePath) {
+    return res.status(404).json({ error: 'No file attached to this proof' });
+  }
+
+  const localPath = filePath.startsWith('/uploads') 
+    ? path.join(process.cwd(), filePath)
+    : path.resolve(filePath);
+
+  if (!fs.existsSync(localPath)) {
+    return res.status(404).json({ error: 'File not found on server' });
+  }
+
+  return res.sendFile(localPath);
 });
 
 // PATCH /api/campaigns/:id/proof-submissions/:proofId/status - Brand reviews proof (approve / request revision)

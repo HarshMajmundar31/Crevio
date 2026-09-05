@@ -10,6 +10,7 @@ if (typeof globalThis.Path2D === 'undefined') {
 
 import cors from 'cors';
 import express from 'express';
+import path from 'path';
 import { clerkMiddleware } from '@clerk/express';
 
 import healthRoutes from './routes/health.mjs';
@@ -31,6 +32,8 @@ const app = express();
 
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
+app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
+
 
 const publishableKey =
   process.env.CLERK_PUBLISHABLE_KEY ||
