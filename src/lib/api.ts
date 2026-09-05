@@ -1255,7 +1255,7 @@ export async function apiAdminUpdateUser(id: string, payload: Partial<AdminUserI
 }
 
 export async function apiAdminAdjustUserBalance(id: string, amount: number, description?: string) {
-  return request<{ success: boolean; wallet: ApiWallet }>(`/api/admin/users/${id}/adjust-balance`, 'POST', { amount, description });
+  return request<{ success: boolean; wallet?: ApiWallet; newBalance?: number; transactionId?: string }>(`/api/admin/users/${id}/adjust-balance`, 'POST', { amount, description });
 }
 
 export async function apiAdminDeleteUser(id: string) {
@@ -1382,3 +1382,177 @@ export async function apiExchangeInstagramToken(shortLivedToken: string, userId?
   }>('/api/social/instagram/exchange-token', 'POST', { shortLivedToken, userId });
 }
 
+// ==========================================
+// Admin Treasury & System Payments Monitoring
+// ==========================================
+
+export interface AdminTreasuryLiquidity {
+  total_available: string | number;
+  total_pending_escrow: string | number;
+  brand_available: string | number;
+  creator_available: string | number;
+  admin_available: string | number;
+  total_wallets: number;
+}
+
+export interface AdminTreasuryEscrow {
+  total_held: string | number;
+  total_released: string | number;
+  total_refunded: string | number;
+  total_disputed: string | number;
+  total_escrows_count: number;
+  held_count: number;
+  disputed_count: number;
+  released_count: number;
+  refunded_count: number;
+}
+
+export interface AdminTreasuryVolume {
+  total_inflow: string | number;
+  total_withdrawn: string | number;
+  total_settled_volume: string | number;
+  total_refund_volume: string | number;
+  total_transactions: number;
+}
+
+export interface AdminTreasuryTypeBreakdown {
+  txn_type: string;
+  count: number;
+  total_volume: string | number;
+}
+
+export interface AdminTreasuryDailyTrend {
+  date: string;
+  inflow: number;
+  outflow: number;
+  escrow_locked: number;
+  escrow_released: number;
+  txn_count: number;
+}
+
+export interface AdminGlobalTransaction {
+  id: string;
+  wallet_id: string;
+  amount: string | number;
+  txn_type: 'seed' | 'deposit' | 'withdrawal' | 'escrow_debit' | 'escrow_credit' | 'escrow_refund';
+  status: 'completed' | 'failed';
+  description: string;
+  reference_escrow_id?: string;
+  created_at: string;
+  user_id: string;
+  user_name: string;
+  user_email: string;
+  user_role: 'brand' | 'creator' | 'admin';
+  user_avatar?: string;
+  currency: string;
+  contract_id?: string;
+  campaign_id?: string;
+  razorpay_order_id?: string;
+  razorpay_payment_id?: string;
+  campaign_title?: string;
+  is_test_mode?: boolean;
+  gateway_type?: 'razorpay_test' | 'seed' | 'internal' | string;
+}
+
+export interface AdminRazorpayTestMetrics {
+  gatewayInfo: {
+    mode: 'test' | 'live' | string;
+    keyId: string;
+    isConfigured: boolean;
+    environmentName: string;
+    currency: string;
+  };
+  metrics: {
+    total_razorpay_inflow: number;
+    total_razorpay_orders: number;
+    total_razorpay_payments: number;
+    razorpay_escrow_held: number;
+    razorpay_escrow_settled: number;
+    razorpay_escrow_refunded: number;
+    razorpay_disputed: number;
+    seed_play_credits_volume: number;
+    simulated_gateway_fees: number;
+    verification_rate: number;
+  };
+}
+
+export interface AdminTreasuryOverviewResponse {
+  success: boolean;
+  liquidity: AdminTreasuryLiquidity;
+  escrow: AdminTreasuryEscrow;
+  volume: AdminTreasuryVolume;
+  typeBreakdown: AdminTreasuryTypeBreakdown[];
+  dailyTrends: AdminTreasuryDailyTrend[];
+  recentTransactions: AdminGlobalTransaction[];
+  testModeTelemetry?: AdminRazorpayTestMetrics;
+}
+
+export interface AdminAllTransactionsResponse {
+  success: boolean;
+  transactions: AdminGlobalTransaction[];
+  totalCount: number;
+  limit: number;
+  offset: number;
+}
+
+export interface AdminLedgerAuditResponse {
+  success: boolean;
+  isSolvent: boolean;
+  auditTimestamp: string;
+  stats: {
+    totalWallets: number;
+    totalAvailablePool: number;
+    totalPendingEscrow: number;
+    totalHeldEscrowVault: number;
+    activeEscrowHoldingsCount: number;
+    totalTransactionsCount: number;
+    netTransactionSum: number;
+    escrowDiscrepancy: number;
+    isEscrowMatched: boolean;
+  };
+}
+
+export async function apiAdminGetTreasuryOverview() {
+  return request<AdminTreasuryOverviewResponse>('/api/payments/admin/treasury-overview', 'GET');
+}
+
+export async function apiAdminGetAllTransactions(params?: {
+  q?: string;
+  txn_type?: string;
+  status?: string;
+  role?: string;
+  gateway_filter?: string;
+  limit?: number;
+  offset?: number;
+}) {
+  const queryParams = new URLSearchParams();
+  if (params?.q) queryParams.set('q', params.q);
+  if (params?.txn_type && params.txn_type !== 'all') queryParams.set('txn_type', params.txn_type);
+  if (params?.status && params.status !== 'all') queryParams.set('status', params.status);
+  if (params?.role && params.role !== 'all') queryParams.set('role', params.role);
+  if (params?.gateway_filter && params.gateway_filter !== 'all') queryParams.set('gateway_filter', params.gateway_filter);
+  if (params?.limit) queryParams.set('limit', String(params.limit));
+  if (params?.offset !== undefined) queryParams.set('offset', String(params.offset));
+
+  const queryStr = queryParams.toString() ? `?${queryParams.toString()}` : '';
+  return request<AdminAllTransactionsResponse>(`/api/payments/admin/all-transactions${queryStr}`, 'GET');
+}
+
+export async function apiAdminRunLedgerAudit() {
+  return request<AdminLedgerAuditResponse>('/api/payments/admin/ledger-audit', 'POST');
+}
+
+export interface AdminUserWalletSummary {
+  id: string;
+  full_name: string;
+  email: string;
+  role: 'brand' | 'creator' | 'admin';
+  avatar_url?: string;
+  available_balance: string | number;
+  pending_escrow_balance: string | number;
+  transaction_count: number;
+}
+
+export async function apiAdminGetUsersWalletsSummary() {
+  return request<{ success: boolean; users: AdminUserWalletSummary[] }>('/api/payments/admin/users-wallets-summary', 'GET');
+}

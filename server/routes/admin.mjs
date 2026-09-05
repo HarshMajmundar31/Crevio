@@ -941,7 +941,12 @@ router.post('/users/:id/adjust-balance', requireAuth, requireRole('admin'), asyn
     ]);
 
     const updatedWallet = await query(`SELECT * FROM user_wallets WHERE user_id = $1`, [id]);
-    return res.json({ success: true, wallet: updatedWallet.rows[0] });
+    return res.json({ 
+      success: true, 
+      wallet: updatedWallet.rows[0],
+      newBalance: parseFloat(updatedWallet.rows[0].available_balance),
+      transactionId: txnId
+    });
   } catch (error) {
     console.error('Admin adjust balance error:', error);
     return res.status(500).json({ error: error.message || 'Failed to adjust balance' });

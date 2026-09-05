@@ -32,6 +32,7 @@ import {
   apiGetAuditLogs,
   apiDownloadCampaignContract,
   apiDownloadSignedContract,
+  apiAdminGetTreasuryOverview,
   AdminOverviewStats,
   AdminActivityItem,
   AdminCampaignItem,
@@ -40,7 +41,8 @@ import {
   AdminMessageItem,
   AdminUserItem,
   AdminProofItem,
-  ApiEscrowHolding
+  ApiEscrowHolding,
+  AdminTreasuryOverviewResponse
 } from '@/lib/api';
 import { 
   ShieldAlert, 
@@ -80,22 +82,29 @@ import {
   Maximize2,
   ZoomIn,
   BarChart3,
-  Heart
+  Heart,
+  CreditCard,
+  Wallet,
+  Coins,
+  ArrowUpRight,
+  ArrowDownRight,
+  Sparkles,
+  Copy
 } from 'lucide-react';
 import { toast } from 'sonner';
 import InstagramAnalyticsDashboard from '@/components/InstagramAnalyticsDashboard';
 
-type AdminTab = 'overview' | 'instagram' | 'campaigns' | 'contracts' | 'applications' | 'proofs' | 'messages' | 'users' | 'escrows' | 'audits';
+type AdminTab = 'overview' | 'payments' | 'instagram' | 'campaigns' | 'contracts' | 'applications' | 'proofs' | 'messages' | 'users' | 'escrows' | 'audits';
 
 
 export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState<AdminTab>('overview');
   const [isLoading, setIsLoading] = useState(true);
 
-
   // Overview Data
   const [overviewStats, setOverviewStats] = useState<AdminOverviewStats | null>(null);
   const [activityStream, setActivityStream] = useState<AdminActivityItem[]>([]);
+  const [treasuryOverview, setTreasuryOverview] = useState<AdminTreasuryOverviewResponse | null>(null);
 
   // Campaigns Data & States
   const [campaigns, setCampaigns] = useState<AdminCampaignItem[]>([]);
@@ -182,7 +191,7 @@ export default function AdminDashboard() {
   const fetchAllAdminData = async () => {
     try {
       setIsLoading(true);
-      const [overviewRes, campaignsRes, contractsRes, appsRes, proofsRes, msgsRes, usersRes, escrowsRes, auditRes] = await Promise.all([
+      const [overviewRes, campaignsRes, contractsRes, appsRes, proofsRes, msgsRes, usersRes, escrowsRes, auditRes, treasuryRes] = await Promise.all([
         apiAdminGetOverview().catch(() => null),
         apiAdminGetCampaigns().catch(() => ({ campaigns: [] })),
         apiAdminGetContracts().catch(() => ({ contracts: [] })),
@@ -191,12 +200,16 @@ export default function AdminDashboard() {
         apiAdminGetMessages().catch(() => ({ messages: [] })),
         apiAdminGetUsers().catch(() => ({ users: [] })),
         apiGetAdminEscrows().catch(() => ({ escrows: [] })),
-        apiGetAuditLogs().catch(() => ({ logs: [] }))
+        apiGetAuditLogs().catch(() => ({ logs: [] })),
+        apiAdminGetTreasuryOverview().catch(() => null)
       ]);
 
       if (overviewRes) {
         setOverviewStats(overviewRes.stats);
         setActivityStream(overviewRes.activityStream);
+      }
+      if (treasuryRes && treasuryRes.success) {
+        setTreasuryOverview(treasuryRes);
       }
       if (campaignsRes) setCampaigns(campaignsRes.campaigns);
       if (contractsRes) setContracts(contractsRes.contracts);
@@ -669,6 +682,7 @@ export default function AdminDashboard() {
       <div className="flex border-b border-muted/50 mb-6 gap-1 overflow-x-auto hide-scrollbar">
         {[
           { id: 'overview', label: 'Overview & Pulse', icon: Activity },
+          { id: 'payments', label: '💳 Razorpay & Test Sandbox', icon: CreditCard },
           { id: 'instagram', label: '📸 Instagram Analytics', icon: Instagram },
           { id: 'campaigns', label: `Campaigns (${campaigns.length})`, icon: Briefcase },
           { id: 'contracts', label: `Contracts (${contracts.length})`, icon: FileText },
@@ -753,6 +767,70 @@ export default function AdminDashboard() {
                 </div>
               </div>
 
+              {/* Razorpay Test Mode Telemetry Callout */}
+              <div className="glass-card-elevated p-5 border border-amber-500/30 bg-gradient-to-r from-amber-500/10 via-background to-indigo-500/10 space-y-4">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-border/50 pb-3">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400">
+                      <CreditCard className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h3 className="font-bold text-sm text-foreground">Razorpay Sandbox & Test Mode Telemetry</h3>
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40 animate-pulse">
+                          SANDBOX ACTIVE
+                        </span>
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        Tracking test money orders, HMAC signatures, test escrow holdings, and simulated card/UPI transactions.
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setActiveTab('payments')}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 transition-colors"
+                  >
+                    Open Payment Monitor <ArrowUpRight className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
+                  <div className="bg-background/60 p-3 rounded-xl border border-border/60">
+                    <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider">Test Gateway Inflow</p>
+                    <p className="text-lg font-black text-foreground mt-0.5">
+                      {formatAmount(treasuryOverview?.testModeTelemetry?.metrics?.total_razorpay_inflow || 0)}
+                    </p>
+                    <span className="text-[10px] text-muted-foreground">Simulated deposits</span>
+                  </div>
+
+                  <div className="bg-background/60 p-3 rounded-xl border border-border/60">
+                    <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider">Active Test Escrow</p>
+                    <p className="text-lg font-black text-amber-400 mt-0.5">
+                      {formatAmount(treasuryOverview?.testModeTelemetry?.metrics?.razorpay_escrow_held || 0)}
+                    </p>
+                    <span className="text-[10px] text-muted-foreground">Locked campaign funds</span>
+                  </div>
+
+                  <div className="bg-background/60 p-3 rounded-xl border border-border/60">
+                    <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider">Verified Test Orders</p>
+                    <p className="text-lg font-black text-emerald-400 mt-0.5">
+                      {treasuryOverview?.testModeTelemetry?.metrics?.total_razorpay_payments || 0} / {treasuryOverview?.testModeTelemetry?.metrics?.total_razorpay_orders || 0}
+                    </p>
+                    <span className="text-[10px] text-muted-foreground">
+                      {treasuryOverview?.testModeTelemetry?.metrics?.verification_rate || 100}% signature rate
+                    </span>
+                  </div>
+
+                  <div className="bg-background/60 p-3 rounded-xl border border-border/60">
+                    <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider">Simulated Gateway Fees</p>
+                    <p className="text-lg font-black text-indigo-400 mt-0.5">
+                      {formatAmount(treasuryOverview?.testModeTelemetry?.metrics?.simulated_gateway_fees || 0)}
+                    </p>
+                    <span className="text-[10px] text-muted-foreground">2% + 18% GST estimate</span>
+                  </div>
+                </div>
+              </div>
+
               {/* Real-Time Live Activity Stream */}
               <div className="glass-card p-6">
                 <div className="flex items-center justify-between mb-4 border-b border-border/50 pb-3">
@@ -787,6 +865,352 @@ export default function AdminDashboard() {
                       </div>
                     ))
                   )}
+                </div>
+              </div>
+            </motion.div>
+          )}
+
+          {/* ========================================== */}
+          {/* TAB 2: RAZORPAY TEST MODE & PAYMENTS HUB */}
+          {/* ========================================== */}
+          {activeTab === 'payments' && (
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
+              
+              {/* Header Banner */}
+              <div className="glass-card-elevated p-6 border-amber-500/30 bg-gradient-to-br from-amber-500/10 via-background to-accent/10 space-y-4">
+                <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <h2 className="text-xl font-black tracking-tight text-foreground flex items-center gap-2">
+                        💳 Razorpay Test Mode & Sandbox Telemetry
+                      </h2>
+                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-amber-500/20 text-amber-300 border border-amber-500/40">
+                        DEVELOPER SANDBOX ACTIVE
+                      </span>
+                    </div>
+                    <p className="text-xs text-muted-foreground max-w-3xl">
+                      Tracking simulated money inflows, Razorpay test payment IDs (<code className="text-amber-300 font-mono">pay_...</code>), test orders (<code className="text-amber-300 font-mono">order_...</code>), cryptographic HMAC-SHA256 signature verifications, and escrow lifecycle events.
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <a
+                      href="/wallet"
+                      className="px-3.5 py-2 rounded-xl text-xs font-bold bg-accent text-accent-foreground hover:bg-accent/80 flex items-center gap-1.5 shadow-glow-accent transition-all"
+                    >
+                      <Wallet className="w-4 h-4" /> Platform Treasury Hub
+                    </a>
+                  </div>
+                </div>
+
+                {/* Gateway Details Row */}
+                <div className="flex flex-wrap items-center gap-4 text-xs pt-3 border-t border-border/50 text-muted-foreground">
+                  <div>
+                    <span className="font-semibold text-foreground">Environment:</span>{' '}
+                    <span className="font-mono text-amber-300">Razorpay Developer Sandbox (Test Mode)</span>
+                  </div>
+                  <div>
+                    <span className="font-semibold text-foreground">Key ID:</span>{' '}
+                    <span className="font-mono text-foreground bg-muted/80 px-2 py-0.5 rounded">
+                      {treasuryOverview?.testModeTelemetry?.gatewayInfo?.keyId || 'rzp_test_••••••••'}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="font-semibold text-foreground">Currency:</span>{' '}
+                    <span className="font-mono text-emerald-400 font-bold">INR (₹)</span>
+                  </div>
+                  <div>
+                    <span className="font-semibold text-foreground">Webhook / Signatures:</span>{' '}
+                    <span className="text-emerald-400 font-semibold">HMAC-SHA256 Verified</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* 4 Core Test Mode KPI Cards */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="glass-card p-5 border-l-4 border-l-indigo-500 space-y-1">
+                  <div className="flex items-center justify-between text-muted-foreground">
+                    <span className="text-[10px] font-bold uppercase tracking-wider">Test Gateway Inflow</span>
+                    <Coins className="w-4 h-4 text-indigo-400" />
+                  </div>
+                  <p className="text-2xl font-black text-foreground">
+                    {formatAmount(treasuryOverview?.testModeTelemetry?.metrics?.total_razorpay_inflow || 0)}
+                  </p>
+                  <p className="text-[11px] text-muted-foreground">
+                    Gross funds deposited via Razorpay Checkout
+                  </p>
+                </div>
+
+                <div className="glass-card p-5 border-l-4 border-l-amber-500 space-y-1">
+                  <div className="flex items-center justify-between text-muted-foreground">
+                    <span className="text-[10px] font-bold uppercase tracking-wider">Test Escrow Held</span>
+                    <Lock className="w-4 h-4 text-amber-400" />
+                  </div>
+                  <p className="text-2xl font-black text-amber-400">
+                    {formatAmount(treasuryOverview?.testModeTelemetry?.metrics?.razorpay_escrow_held || 0)}
+                  </p>
+                  <p className="text-[11px] text-muted-foreground">
+                    Locked in active campaign milestones
+                  </p>
+                </div>
+
+                <div className="glass-card p-5 border-l-4 border-l-emerald-500 space-y-1">
+                  <div className="flex items-center justify-between text-muted-foreground">
+                    <span className="text-[10px] font-bold uppercase tracking-wider">Verified Test Orders</span>
+                    <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                  </div>
+                  <p className="text-2xl font-black text-emerald-400">
+                    {treasuryOverview?.testModeTelemetry?.metrics?.total_razorpay_payments || 0}{' '}
+                    <span className="text-xs font-normal text-muted-foreground">
+                      / {treasuryOverview?.testModeTelemetry?.metrics?.total_razorpay_orders || 0}
+                    </span>
+                  </p>
+                  <p className="text-[11px] text-muted-foreground">
+                    {treasuryOverview?.testModeTelemetry?.metrics?.verification_rate || 100}% signature verification success
+                  </p>
+                </div>
+
+                <div className="glass-card p-5 border-l-4 border-l-rose-500 space-y-1">
+                  <div className="flex items-center justify-between text-muted-foreground">
+                    <span className="text-[10px] font-bold uppercase tracking-wider">Simulated Gateway Fees</span>
+                    <TrendingUp className="w-4 h-4 text-rose-400" />
+                  </div>
+                  <p className="text-2xl font-black text-rose-400">
+                    {formatAmount(treasuryOverview?.testModeTelemetry?.metrics?.simulated_gateway_fees || 0)}
+                  </p>
+                  <p className="text-[11px] text-muted-foreground">
+                    Calculated standard 2.36% (2% + 18% GST)
+                  </p>
+                </div>
+              </div>
+
+              {/* Middle Section: Flow Pipeline + Sandbox Cheatsheet */}
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                
+                {/* Visual Razorpay Test Lifecycle Flow */}
+                <div className="glass-card p-6 lg:col-span-2 space-y-4">
+                  <div className="border-b border-border/50 pb-3">
+                    <h3 className="font-bold text-sm flex items-center gap-2">
+                      <Sparkles className="w-4 h-4 text-accent" />
+                      Razorpay Test Mode Financial Pipeline
+                    </h3>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      End-to-end milestone lifecycle for simulated platform transactions
+                    </p>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 text-xs pt-1">
+                    <div className="p-3.5 rounded-xl bg-muted/40 border border-border/60 space-y-2">
+                      <div className="w-7 h-7 rounded-lg bg-indigo-500/20 text-indigo-400 flex items-center justify-center font-bold text-xs">
+                        1
+                      </div>
+                      <p className="font-bold text-foreground">Brand Deposit</p>
+                      <p className="text-[11px] text-muted-foreground leading-relaxed">
+                        Brand initiates top-up via Razorpay Checkout modal in test mode.
+                      </p>
+                      <span className="inline-block px-1.5 py-0.5 rounded bg-muted text-[10px] font-mono text-indigo-300">
+                        order_...
+                      </span>
+                    </div>
+
+                    <div className="p-3.5 rounded-xl bg-muted/40 border border-border/60 space-y-2">
+                      <div className="w-7 h-7 rounded-lg bg-amber-500/20 text-amber-400 flex items-center justify-center font-bold text-xs">
+                        2
+                      </div>
+                      <p className="font-bold text-foreground">Escrow Lock</p>
+                      <p className="text-[11px] text-muted-foreground leading-relaxed">
+                        HMAC signature verified, money locked into smart platform escrow vault.
+                      </p>
+                      <span className="inline-block px-1.5 py-0.5 rounded bg-amber-500/10 text-[10px] font-mono text-amber-400">
+                        status: held
+                      </span>
+                    </div>
+
+                    <div className="p-3.5 rounded-xl bg-muted/40 border border-border/60 space-y-2">
+                      <div className="w-7 h-7 rounded-lg bg-cyan-500/20 text-cyan-400 flex items-center justify-center font-bold text-xs">
+                        3
+                      </div>
+                      <p className="font-bold text-foreground">Proof Submission</p>
+                      <p className="text-[11px] text-muted-foreground leading-relaxed">
+                        Creator uploads deliverables, live links & dashboard screenshots.
+                      </p>
+                      <span className="inline-block px-1.5 py-0.5 rounded bg-cyan-500/10 text-[10px] font-mono text-cyan-400">
+                        proofs review
+                      </span>
+                    </div>
+
+                    <div className="p-3.5 rounded-xl bg-muted/40 border border-border/60 space-y-2">
+                      <div className="w-7 h-7 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold text-xs">
+                        4
+                      </div>
+                      <p className="font-bold text-foreground">Creator Payout</p>
+                      <p className="text-[11px] text-muted-foreground leading-relaxed">
+                        Brand or Admin approves work, escrow automatically disburses funds.
+                      </p>
+                      <span className="inline-block px-1.5 py-0.5 rounded bg-emerald-500/10 text-[10px] font-mono text-emerald-400">
+                        status: settled
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Razorpay Sandbox Credentials Cheatsheet */}
+                <div className="glass-card p-6 space-y-4">
+                  <div className="border-b border-border/50 pb-3">
+                    <h3 className="font-bold text-sm flex items-center gap-2 text-amber-400">
+                      <CreditCard className="w-4 h-4" />
+                      Sandbox Testing Reference
+                    </h3>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      Use these credentials in the deposit modal
+                    </p>
+                  </div>
+
+                  <div className="space-y-3 text-xs">
+                    <div className="p-2.5 rounded-lg bg-muted/30 border border-border/40 space-y-1">
+                      <p className="text-[10px] uppercase font-bold text-muted-foreground">Test Card Number</p>
+                      <div className="flex items-center justify-between">
+                        <code className="font-mono text-xs text-foreground font-bold">4012 0000 0000 0000</code>
+                        <button
+                          onClick={() => {
+                            navigator.clipboard.writeText('4012000000000000');
+                            toast.success('Test Card copied to clipboard!');
+                          }}
+                          className="p-1 hover:bg-muted rounded text-muted-foreground hover:text-foreground"
+                          title="Copy Card"
+                        >
+                          <Copy className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                      <p className="text-[10px] text-muted-foreground">CVV: <span className="font-mono text-foreground">123</span> · Expiry: <span className="font-mono text-foreground">12/32</span></p>
+                    </div>
+
+                    <div className="p-2.5 rounded-lg bg-muted/30 border border-border/40 space-y-1">
+                      <p className="text-[10px] uppercase font-bold text-muted-foreground">Test UPI ID (VPA)</p>
+                      <div className="flex items-center justify-between">
+                        <code className="font-mono text-xs text-emerald-400 font-bold">success@razorpay</code>
+                        <button
+                          onClick={() => {
+                            navigator.clipboard.writeText('success@razorpay');
+                            toast.success('Test UPI copied to clipboard!');
+                          }}
+                          className="p-1 hover:bg-muted rounded text-muted-foreground hover:text-foreground"
+                          title="Copy UPI"
+                        >
+                          <Copy className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                      <p className="text-[10px] text-muted-foreground">Fails with: <span className="font-mono text-rose-400">failure@razorpay</span></p>
+                    </div>
+
+                    <div className="p-2.5 rounded-lg bg-muted/30 border border-border/40 space-y-1">
+                      <p className="text-[10px] uppercase font-bold text-muted-foreground">Test Netbanking & OTP</p>
+                      <p className="text-[11px] text-foreground font-semibold">Any Indian Bank (SBI, HDFC, ICICI)</p>
+                      <p className="text-[10px] text-muted-foreground">Simulated OTP: <span className="font-mono text-accent font-bold">123456</span></p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Recent Razorpay & Gateway Transactions Feed */}
+              <div className="glass-card p-6 space-y-4">
+                <div className="flex items-center justify-between border-b border-border/50 pb-3">
+                  <div>
+                    <h3 className="font-bold text-sm flex items-center gap-2">
+                      <Activity className="w-4 h-4 text-accent" />
+                      Recent Platform Transactions Ledger
+                    </h3>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      Live feed of simulated deposits, play credit seeds, and escrow disbursement events
+                    </p>
+                  </div>
+                  <a
+                    href="/wallet"
+                    className="text-xs font-bold text-accent hover:underline flex items-center gap-1"
+                  >
+                    View Complete Ledger <ArrowUpRight className="w-3.5 h-3.5" />
+                  </a>
+                </div>
+
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs border-collapse">
+                    <thead>
+                      <tr className="text-muted-foreground border-b border-border/50 text-[10px] uppercase font-bold tracking-wider">
+                        <th className="py-2.5 px-3">User</th>
+                        <th className="py-2.5 px-3">Type</th>
+                        <th className="py-2.5 px-3">Gateway / Reference</th>
+                        <th className="py-2.5 px-3">Description</th>
+                        <th className="py-2.5 px-3">Time</th>
+                        <th className="py-2.5 px-3 text-right">Amount</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border/30">
+                      {treasuryOverview?.recentTransactions && treasuryOverview.recentTransactions.length > 0 ? (
+                        treasuryOverview.recentTransactions.map((txn) => {
+                          const amt = parseFloat(String(txn.amount));
+                          const isCredit = amt >= 0;
+                          return (
+                            <tr key={txn.id} className="hover:bg-muted/20 transition-colors">
+                              <td className="py-2.5 px-3">
+                                <div className="flex items-center gap-2">
+                                  <div className="w-6 h-6 rounded-full bg-accent/10 border border-accent/20 flex items-center justify-center text-[10px] font-bold text-accent">
+                                    {txn.user_name ? txn.user_name[0].toUpperCase() : 'U'}
+                                  </div>
+                                  <div className="leading-tight">
+                                    <p className="font-semibold text-foreground truncate max-w-[120px]">{txn.user_name || 'System User'}</p>
+                                    <span className={`text-[9px] font-bold uppercase px-1.5 py-0.2 rounded ${
+                                      txn.user_role === 'brand' ? 'bg-indigo-500/10 text-indigo-400' :
+                                      txn.user_role === 'creator' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-purple-500/10 text-purple-400'
+                                    }`}>
+                                      {txn.user_role}
+                                    </span>
+                                  </div>
+                                </div>
+                              </td>
+                              <td className="py-2.5 px-3">
+                                <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-bold uppercase ${
+                                  txn.txn_type === 'deposit' || txn.txn_type === 'escrow_credit' || txn.txn_type === 'seed'
+                                    ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                                    : txn.txn_type === 'escrow_debit'
+                                    ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
+                                    : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
+                                }`}>
+                                  {txn.txn_type}
+                                </span>
+                              </td>
+                              <td className="py-2.5 px-3 font-mono text-[10px]">
+                                {txn.razorpay_payment_id ? (
+                                  <span className="inline-flex items-center gap-1 text-amber-300 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20">
+                                    🧪 {txn.razorpay_payment_id.substring(0, 14)}...
+                                  </span>
+                                ) : txn.txn_type === 'seed' ? (
+                                  <span className="text-indigo-400 bg-indigo-500/10 px-1.5 py-0.5 rounded">
+                                    🌱 Seed Credits
+                                  </span>
+                                ) : (
+                                  <span className="text-muted-foreground">Internal Ledger</span>
+                                )}
+                              </td>
+                              <td className="py-2.5 px-3 font-medium text-muted-foreground truncate max-w-[220px]">
+                                {txn.description}
+                              </td>
+                              <td className="py-2.5 px-3 text-muted-foreground whitespace-nowrap">
+                                {new Date(txn.created_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
+                              </td>
+                              <td className={`py-2.5 px-3 font-bold text-right whitespace-nowrap ${isCredit ? 'text-emerald-400' : 'text-amber-400'}`}>
+                                {isCredit ? '+' : '-'}{formatAmount(Math.abs(amt))}
+                              </td>
+                            </tr>
+                          );
+                        })
+                      ) : (
+                        <tr>
+                          <td colSpan={6} className="py-6 text-center text-muted-foreground">
+                            No recent transactions recorded in this session.
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
                 </div>
               </div>
             </motion.div>

@@ -794,4 +794,435 @@ router.get('/escrows', requireAuth, requireRole('admin'), async (req, res) => {
   }
 });
 
+// ==========================================
+// 13. Admin Treasury & Platform Payments Analytics
+// ==========================================
+router.get('/admin/treasury-overview', requireAuth, requireRole('admin'), async (req, res) => {
+  try {
+    // 1. Overall Liquidity by Role & Total
+    const liquidityRes = await query(`
+      SELECT 
+        COALESCE(SUM(w.available_balance), 0)::numeric AS total_available,
+        COALESCE(SUM(w.pending_escrow_balance), 0)::numeric AS total_pending_escrow,
+        COALESCE(SUM(CASE WHEN u.role = 'brand' THEN w.available_balance ELSE 0 END), 0)::numeric AS brand_available,
+        COALESCE(SUM(CASE WHEN u.role = 'creator' THEN w.available_balance ELSE 0 END), 0)::numeric AS creator_available,
+        COALESCE(SUM(CASE WHEN u.role = 'admin' THEN w.available_balance ELSE 0 END), 0)::numeric AS admin_available,
+        COUNT(w.id)::int AS total_wallets
+      FROM user_wallets w
+      JOIN users u ON u.id = w.user_id
+    `);
+
+    // 2. Escrow Holdings Breakdown
+    const escrowRes = await query(`
+      SELECT 
+        COALESCE(SUM(CASE WHEN status = 'held' THEN amount ELSE 0 END), 0)::numeric AS total_held,
+        COALESCE(SUM(CASE WHEN status = 'released' THEN amount ELSE 0 END), 0)::numeric AS total_released,
+        COALESCE(SUM(CASE WHEN status = 'refunded' THEN amount ELSE 0 END), 0)::numeric AS total_refunded,
+        COALESCE(SUM(CASE WHEN status = 'disputed' THEN amount ELSE 0 END), 0)::numeric AS total_disputed,
+        COUNT(*)::int AS total_escrows_count,
+        COUNT(CASE WHEN status = 'held' THEN 1 END)::int AS held_count,
+        COUNT(CASE WHEN status = 'disputed' THEN 1 END)::int AS disputed_count,
+        COUNT(CASE WHEN status = 'released' THEN 1 END)::int AS released_count,
+        COUNT(CASE WHEN status = 'refunded' THEN 1 END)::int AS refunded_count
+      FROM escrow_holdings
+    `);
+
+    // 3. Gross Transaction Inflows & Outflows
+    const volumeRes = await query(`
+      SELECT 
+        COALESCE(SUM(CASE WHEN txn_type IN ('deposit', 'seed') AND amount > 0 THEN amount ELSE 0 END), 0)::numeric AS total_inflow,
+        COALESCE(SUM(CASE WHEN txn_type = 'withdrawal' THEN ABS(amount) ELSE 0 END), 0)::numeric AS total_withdrawn,
+        COALESCE(SUM(CASE WHEN txn_type = 'escrow_credit' THEN amount ELSE 0 END), 0)::numeric AS total_settled_volume,
+        COALESCE(SUM(CASE WHEN txn_type = 'escrow_refund' THEN amount ELSE 0 END), 0)::numeric AS total_refund_volume,
+        COUNT(*)::int AS total_transactions
+      FROM wallet_transactions
+    `);
+
+    // 4. Transaction Type Distribution
+    const typeBreakdownRes = await query(`
+      SELECT 
+        txn_type,
+        COUNT(*)::int AS count,
+        COALESCE(SUM(ABS(amount)), 0)::numeric AS total_volume
+      FROM wallet_transactions
+      GROUP BY txn_type
+      ORDER BY count DESC
+    `);
+
+    // 5. 30-Day Daily Financial Timeline
+    const trendsRes = await query(`
+      SELECT 
+        TO_CHAR(created_at, 'YYYY-MM-DD') AS date,
+        COALESCE(SUM(CASE WHEN txn_type IN ('deposit', 'seed') AND amount > 0 THEN amount ELSE 0 END), 0)::numeric AS inflow,
+        COALESCE(SUM(CASE WHEN txn_type = 'withdrawal' THEN ABS(amount) ELSE 0 END), 0)::numeric AS outflow,
+        COALESCE(SUM(CASE WHEN txn_type = 'escrow_debit' THEN ABS(amount) ELSE 0 END), 0)::numeric AS escrow_locked,
+        COALESCE(SUM(CASE WHEN txn_type = 'escrow_credit' THEN amount ELSE 0 END), 0)::numeric AS escrow_released,
+        COUNT(*)::int AS txn_count
+      FROM wallet_transactions
+      WHERE created_at >= NOW() - INTERVAL '30 days'
+      GROUP BY TO_CHAR(created_at, 'YYYY-MM-DD')
+      ORDER BY date ASC
+    `);
+
+    // 6. Recent Platform Transactions
+    const recentTxnsRes = await query(`
+      SELECT 
+        t.*,
+        u.id AS user_id,
+        u.full_name AS user_name,
+        u.email AS user_email,
+        u.role AS user_role,
+        u.avatar_url AS user_avatar
+      FROM wallet_transactions t
+      JOIN user_wallets w ON w.id = t.wallet_id
+      JOIN users u ON u.id = w.user_id
+      ORDER BY t.created_at DESC
+      LIMIT 10
+    `);
+
+    // 7. Razorpay Test Mode Telemetry & Environment
+    const rawKeyId = process.env.RAZORPAY_KEY_ID || '';
+    const isTestMode = rawKeyId.startsWith('rzp_test_') || !rawKeyId.startsWith('rzp_live_');
+    const maskedKeyId = rawKeyId ? `${rawKeyId.slice(0, 8)}••••••••${rawKeyId.slice(-4)}` : 'rzp_test_sandbox';
+    const isConfigured = Boolean(rawKeyId && process.env.RAZORPAY_KEY_SECRET);
+
+    const rzpMetricsRes = await query(`
+      SELECT 
+        COALESCE(SUM(CASE WHEN (t.description ILIKE '%Razorpay%' OR t.description ILIKE '%Sandbox%' OR e.razorpay_payment_id IS NOT NULL) AND t.amount > 0 THEN t.amount ELSE 0 END), 0)::numeric AS total_razorpay_inflow,
+        COUNT(DISTINCT e.razorpay_order_id)::int AS total_razorpay_orders,
+        COUNT(DISTINCT e.razorpay_payment_id)::int AS total_razorpay_payments,
+        COALESCE(SUM(CASE WHEN e.status = 'held' AND (e.razorpay_order_id IS NOT NULL OR e.razorpay_payment_id IS NOT NULL) THEN e.amount ELSE 0 END), 0)::numeric AS razorpay_escrow_held,
+        COALESCE(SUM(CASE WHEN e.status = 'released' AND (e.razorpay_order_id IS NOT NULL OR e.razorpay_payment_id IS NOT NULL) THEN e.amount ELSE 0 END), 0)::numeric AS razorpay_escrow_settled,
+        COALESCE(SUM(CASE WHEN e.status = 'refunded' AND (e.razorpay_order_id IS NOT NULL OR e.razorpay_payment_id IS NOT NULL) THEN e.amount ELSE 0 END), 0)::numeric AS razorpay_escrow_refunded,
+        COALESCE(SUM(CASE WHEN e.status = 'disputed' AND (e.razorpay_order_id IS NOT NULL OR e.razorpay_payment_id IS NOT NULL) THEN e.amount ELSE 0 END), 0)::numeric AS razorpay_disputed,
+        COALESCE(SUM(CASE WHEN t.txn_type = 'seed' THEN t.amount ELSE 0 END), 0)::numeric AS seed_play_credits_volume
+      FROM wallet_transactions t
+      LEFT JOIN escrow_holdings e ON e.id = t.reference_escrow_id
+    `);
+
+    const rawRzp = rzpMetricsRes.rows[0] || {};
+    const totalRzpInflow = parseFloat(rawRzp.total_razorpay_inflow) || 0;
+    const totalOrders = parseInt(rawRzp.total_razorpay_orders, 10) || 0;
+    const totalPayments = parseInt(rawRzp.total_razorpay_payments, 10) || 0;
+
+    // Simulated 2% standard gateway fee + 18% GST (2.36%)
+    const simulatedGatewayFees = Number((totalRzpInflow * 0.0236).toFixed(2));
+    const verificationRate = totalOrders > 0 ? Number(((totalPayments / totalOrders) * 100).toFixed(1)) : 100;
+
+    const testModeTelemetry = {
+      gatewayInfo: {
+        mode: isTestMode ? 'test' : 'live',
+        keyId: maskedKeyId,
+        isConfigured,
+        environmentName: isTestMode ? 'Razorpay Developer Sandbox (Test Mode)' : 'Razorpay Production Gateway',
+        currency: 'INR'
+      },
+      metrics: {
+        total_razorpay_inflow: totalRzpInflow,
+        total_razorpay_orders: totalOrders,
+        total_razorpay_payments: totalPayments,
+        razorpay_escrow_held: parseFloat(rawRzp.razorpay_escrow_held) || 0,
+        razorpay_escrow_settled: parseFloat(rawRzp.razorpay_escrow_settled) || 0,
+        razorpay_escrow_refunded: parseFloat(rawRzp.razorpay_escrow_refunded) || 0,
+        razorpay_disputed: parseFloat(rawRzp.razorpay_disputed) || 0,
+        seed_play_credits_volume: parseFloat(rawRzp.seed_play_credits_volume) || 0,
+        simulated_gateway_fees: simulatedGatewayFees,
+        verification_rate: verificationRate
+      }
+    };
+
+    return res.json({
+      success: true,
+      liquidity: liquidityRes.rows[0] || {},
+      escrow: escrowRes.rows[0] || {},
+      volume: volumeRes.rows[0] || {},
+      typeBreakdown: typeBreakdownRes.rows || [],
+      dailyTrends: trendsRes.rows || [],
+      recentTransactions: recentTxnsRes.rows || [],
+      testModeTelemetry
+    });
+  } catch (error) {
+    console.error('Admin treasury overview error:', error);
+    return res.status(500).json({ error: 'Failed to generate platform treasury and payment analytics' });
+  }
+});
+
+// ==========================================
+// 14. Admin Global Transaction Ledger (All Users)
+// ==========================================
+router.get('/admin/all-transactions', requireAuth, requireRole('admin'), async (req, res) => {
+  try {
+    const { q, txn_type, status, role, gateway_filter, limit = 100, offset = 0 } = req.query;
+    const whereClauses = [];
+    const params = [];
+
+    if (q) {
+      params.push(`%${q}%`);
+      whereClauses.push(`(
+        t.id ILIKE $${params.length} OR 
+        t.description ILIKE $${params.length} OR 
+        u.full_name ILIKE $${params.length} OR 
+        u.email ILIKE $${params.length} OR
+        e.razorpay_payment_id ILIKE $${params.length} OR
+        e.razorpay_order_id ILIKE $${params.length}
+      )`);
+    }
+
+    if (txn_type && txn_type !== 'all') {
+      params.push(txn_type);
+      whereClauses.push(`t.txn_type = $${params.length}`);
+    }
+
+    if (status && status !== 'all') {
+      params.push(status);
+      whereClauses.push(`t.status = $${params.length}`);
+    }
+
+    if (role && role !== 'all') {
+      params.push(role);
+      whereClauses.push(`u.role = $${params.length}`);
+    }
+
+    if (gateway_filter && gateway_filter !== 'all') {
+      if (gateway_filter === 'razorpay_test') {
+        whereClauses.push(`(t.description ILIKE '%Razorpay%' OR e.razorpay_payment_id IS NOT NULL OR e.razorpay_order_id IS NOT NULL)`);
+      } else if (gateway_filter === 'seed') {
+        whereClauses.push(`t.txn_type = 'seed'`);
+      } else if (gateway_filter === 'internal') {
+        whereClauses.push(`t.txn_type != 'seed' AND t.description NOT ILIKE '%Razorpay%' AND e.razorpay_payment_id IS NULL AND e.razorpay_order_id IS NULL`);
+      }
+    }
+
+    const whereStr = whereClauses.length > 0 ? `WHERE ${whereClauses.join(' AND ')}` : '';
+
+    // Total Count for Pagination
+    const countQuery = `
+      SELECT COUNT(t.id)::int AS total
+      FROM wallet_transactions t
+      JOIN user_wallets w ON w.id = t.wallet_id
+      JOIN users u ON u.id = w.user_id
+      LEFT JOIN escrow_holdings e ON e.id = t.reference_escrow_id
+      ${whereStr}
+    `;
+    const countRes = await query(countQuery, params);
+    const totalCount = countRes.rows[0]?.total || 0;
+
+    // Fetch Paginated Ledger Records
+    params.push(parseInt(limit, 10));
+    const limitIdx = params.length;
+    params.push(parseInt(offset, 10));
+    const offsetIdx = params.length;
+
+    const dataQuery = `
+      SELECT 
+        t.id,
+        t.wallet_id,
+        t.amount,
+        t.txn_type,
+        t.status,
+        t.description,
+        t.reference_escrow_id,
+        t.created_at,
+        u.id AS user_id,
+        u.full_name AS user_name,
+        u.email AS user_email,
+        u.role AS user_role,
+        u.avatar_url AS user_avatar,
+        w.currency,
+        e.contract_id,
+        e.campaign_id,
+        e.razorpay_order_id,
+        e.razorpay_payment_id,
+        c.title AS campaign_title,
+        true AS is_test_mode,
+        CASE 
+          WHEN t.txn_type = 'seed' THEN 'seed'
+          WHEN t.description ILIKE '%Razorpay%' OR e.razorpay_payment_id IS NOT NULL OR e.razorpay_order_id IS NOT NULL THEN 'razorpay_test'
+          ELSE 'internal'
+        END AS gateway_type
+      FROM wallet_transactions t
+      JOIN user_wallets w ON w.id = t.wallet_id
+      JOIN users u ON u.id = w.user_id
+      LEFT JOIN escrow_holdings e ON e.id = t.reference_escrow_id
+      LEFT JOIN campaigns c ON c.id = e.campaign_id
+      ${whereStr}
+      ORDER BY t.created_at DESC
+      LIMIT $${limitIdx} OFFSET $${offsetIdx}
+    `;
+
+    const result = await query(dataQuery, params);
+
+    return res.json({
+      success: true,
+      transactions: result.rows,
+      totalCount,
+      limit: parseInt(limit, 10),
+      offset: parseInt(offset, 10)
+    });
+  } catch (error) {
+    console.error('Admin all transactions error:', error);
+    return res.status(500).json({ error: 'Failed to retrieve global transaction ledger' });
+  }
+});
+
+// ==========================================
+// 15. Admin Solvency & Ledger Integrity Audit Check
+// ==========================================
+router.post('/admin/ledger-audit', requireAuth, requireRole('admin'), async (req, res) => {
+  try {
+    // 1. Wallets vs Transactions balance check
+    const walletsSumRes = await query(`
+      SELECT 
+        COUNT(id)::int AS total_wallets,
+        COALESCE(SUM(available_balance), 0)::numeric AS total_available,
+        COALESCE(SUM(pending_escrow_balance), 0)::numeric AS total_pending_escrow
+      FROM user_wallets
+    `);
+
+    // 2. Active Escrows
+    const activeEscrowRes = await query(`
+      SELECT 
+        COUNT(id)::int AS active_escrow_count,
+        COALESCE(SUM(amount), 0)::numeric AS total_held_escrow
+      FROM escrow_holdings 
+      WHERE status = 'held'
+    `);
+
+    // 3. Transactions Total
+    const netTxnRes = await query(`
+      SELECT 
+        COUNT(id)::int AS total_transactions,
+        COALESCE(SUM(amount), 0)::numeric AS net_transaction_sum
+      FROM wallet_transactions
+      WHERE status = 'completed'
+    `);
+
+    const totalAvailable = parseFloat(walletsSumRes.rows[0]?.total_available || '0');
+    const totalPendingEscrow = parseFloat(walletsSumRes.rows[0]?.total_pending_escrow || '0');
+    const totalHeldEscrow = parseFloat(activeEscrowRes.rows[0]?.total_held_escrow || '0');
+
+    // Discrepancy checks
+    const escrowDiscrepancy = Math.abs(totalPendingEscrow - totalHeldEscrow);
+    const isEscrowMatched = escrowDiscrepancy < 0.01;
+    const isSolvent = isEscrowMatched && totalAvailable >= 0;
+
+    return res.json({
+      success: true,
+      isSolvent,
+      auditTimestamp: new Date().toISOString(),
+      stats: {
+        totalWallets: walletsSumRes.rows[0]?.total_wallets || 0,
+        totalAvailablePool: totalAvailable,
+        totalPendingEscrow: totalPendingEscrow,
+        totalHeldEscrowVault: totalHeldEscrow,
+        activeEscrowHoldingsCount: activeEscrowRes.rows[0]?.active_escrow_count || 0,
+        totalTransactionsCount: netTxnRes.rows[0]?.total_transactions || 0,
+        netTransactionSum: parseFloat(netTxnRes.rows[0]?.net_transaction_sum || '0'),
+        escrowDiscrepancy,
+        isEscrowMatched
+      }
+    });
+  } catch (error) {
+    console.error('Admin ledger audit error:', error);
+    return res.status(500).json({ error: 'Failed to perform ledger integrity audit' });
+  }
+});
+
+// ==========================================
+// 16. Admin Adjust User Balance (Credit/Debit with Audit Reason)
+// ==========================================
+router.post('/admin/users/:userId/adjust-balance', requireAuth, requireRole('admin'), async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { amount, reason } = req.body;
+
+    if (!amount || isNaN(amount) || Number(amount) === 0) {
+      return res.status(400).json({ error: 'Please specify a non-zero adjustment amount' });
+    }
+
+    const adjAmt = Number(amount);
+
+    let walletRes = await query('SELECT * FROM user_wallets WHERE user_id = $1', [userId]);
+    if (!walletRes.rows[0]) {
+      const walletId = createId('wal');
+      await query(
+        `INSERT INTO user_wallets (id, user_id, available_balance, pending_escrow_balance, currency) 
+         VALUES ($1, $2, 0.00, 0.00, 'INR')`,
+        [walletId, userId]
+      );
+      walletRes = await query('SELECT * FROM user_wallets WHERE user_id = $1', [userId]);
+    }
+
+    const wallet = walletRes.rows[0];
+    const newBalance = Number(wallet.available_balance) + adjAmt;
+
+    if (newBalance < 0) {
+      return res.status(400).json({ error: 'Adjustment would cause user balance to drop below ₹0' });
+    }
+
+    await query(
+      `UPDATE user_wallets 
+       SET available_balance = available_balance + $2, updated_at = NOW() 
+       WHERE id = $1`,
+      [wallet.id, adjAmt]
+    );
+
+    const desc = reason ? `Admin Treasury Adjustment: ${reason}` : `Administrative balance adjustment (${adjAmt >= 0 ? '+' : ''}₹${adjAmt})`;
+    const txnType = adjAmt >= 0 ? 'deposit' : 'withdrawal';
+
+    const txnId = createId('txn');
+    await query(
+      `INSERT INTO wallet_transactions (id, wallet_id, amount, txn_type, status, description) 
+       VALUES ($1, $2, $3, $4, 'completed', $5)`,
+      [txnId, wallet.id, adjAmt, txnType, desc]
+    );
+
+    return res.json({
+      success: true,
+      newBalance,
+      wallet: {
+        id: wallet.id,
+        user_id: userId,
+        available_balance: newBalance,
+        pending_escrow_balance: wallet.pending_escrow_balance || 0,
+        currency: 'INR'
+      },
+      transactionId: txnId,
+      message: `Successfully adjusted balance by ₹${adjAmt}`
+    });
+  } catch (error) {
+    console.error('Admin adjust balance error:', error);
+    return res.status(500).json({ error: 'Failed to adjust user wallet balance' });
+  }
+});
+
+// ==========================================
+// 17. Admin Quick Users List for Wallet Hub
+// ==========================================
+router.get('/admin/users-wallets-summary', requireAuth, requireRole('admin'), async (req, res) => {
+  try {
+    const result = await query(`
+      SELECT 
+        u.id, 
+        u.full_name, 
+        u.email, 
+        u.role, 
+        u.avatar_url,
+        COALESCE(w.available_balance, 0)::numeric AS available_balance,
+        COALESCE(w.pending_escrow_balance, 0)::numeric AS pending_escrow_balance,
+        (SELECT COUNT(*)::int FROM wallet_transactions wt WHERE wt.wallet_id = w.id) AS transaction_count
+      FROM users u
+      LEFT JOIN user_wallets w ON w.user_id = u.id
+      ORDER BY u.created_at DESC
+    `);
+
+    return res.json({ success: true, users: result.rows });
+  } catch (error) {
+    console.error('Admin users wallets summary error:', error);
+    return res.status(500).json({ error: 'Failed to retrieve users wallet summary' });
+  }
+});
+
 export default router;
+
+
