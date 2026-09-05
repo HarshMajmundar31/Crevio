@@ -7,6 +7,11 @@ import { createId } from '../lib/ids.mjs';
 import { requireAuth, requireRole } from '../middleware/require-auth.mjs';
 import { broadcastEvent } from '../lib/socket.mjs';
 import OpenAI from 'openai';
+import { 
+  sendCampaignCreatedEmail, 
+  sendApplicationSubmittedEmail, 
+  sendProofSubmittedEmail 
+} from '../services/emailService.mjs';
 
 const router = Router();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 25 * 1024 * 1024 } });
@@ -975,6 +980,27 @@ router.post('/:id/proof-submissions', requireAuth, requireRole('creator'), uploa
       userId: campaign.brand_id,
       timestamp: new Date().toISOString()
     });
+
+    // Autonomous email notification to brand
+    try {
+      const brandUser = await query('SELECT full_name, email FROM users WHERE id = $1', [campaign.brand_id]);
+      const bEmail = brandUser.rows[0]?.email;
+      const bName = brandUser.rows[0]?.full_name;
+      if (bEmail) {
+        sendProofSubmittedEmail({
+          brandEmail: bEmail,
+          brandName: bName,
+          creatorName: req.user.name || 'Assigned Creator',
+          campaignTitle: campaign.title,
+          liveLinks: liveUrl ? [liveUrl] : [],
+          impressions: impressionsCount,
+          reach: reachCount,
+          campaignId
+        }).catch(e => console.error('[Proof Email Hook Error]', e));
+      }
+    } catch (emailErr) {
+      console.error('[Proof Email Trigger Failed]', emailErr);
+    }
   }
 
   broadcastEvent('campaign:proof_submitted', {
@@ -1404,6 +1430,27 @@ router.post('/:id/apply', requireAuth, requireRole('creator'), async (req, res) 
     );
   }
 
+  // Autonomous email notification to brand
+  try {
+    const brandUser = await query('SELECT full_name, email FROM users WHERE id = $1', [campaign.brand_id]);
+    const bEmail = brandUser.rows[0]?.email;
+    const bName = brandUser.rows[0]?.full_name;
+    if (bEmail) {
+      sendApplicationSubmittedEmail({
+        brandEmail: bEmail,
+        brandName: bName,
+        creatorName: req.user.name || 'Verified Creator',
+        campaignTitle: campaign.title,
+        fitScore,
+        proposedFee: fee,
+        campaignId,
+        applicationId
+      }).catch(e => console.error('[Application Email Hook Error]', e));
+    }
+  } catch (emailErr) {
+    console.error('[Application Email Trigger Failed]', emailErr);
+  }
+
   return res.status(201).json({ campaignId, applied: true, alreadyApplied: false, fitScore, applicationId });
 });
 
@@ -1525,6 +1572,25 @@ router.post('/', requireAuth, requireRole('brand', 'admin'), async (req, res) =>
        VALUES ($1, $2, $3, $4)`,
       [createId('creq'), campaignId, String(requirements[i]), i + 1]
     );
+  }
+
+  // Autonomous email confirmation to brand
+  try {
+    const brandUser = await query('SELECT full_name, email FROM users WHERE id = $1', [req.user.userId]);
+    const bEmail = brandUser.rows[0]?.email || req.user.email;
+    const bName = brandUser.rows[0]?.full_name || req.user.name;
+    if (bEmail) {
+      sendCampaignCreatedEmail({
+        brandEmail: bEmail,
+        brandName: bName,
+        campaignTitle: String(title).trim(),
+        budget: maxBudget,
+        campaignId,
+        platform: String(platform).trim()
+      }).catch(e => console.error('[Campaign Email Hook Error]', e));
+    }
+  } catch (emailErr) {
+    console.error('[Campaign Email Trigger Failed]', emailErr);
   }
 
   return res.status(201).json({ campaignId });

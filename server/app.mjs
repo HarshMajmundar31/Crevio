@@ -26,6 +26,7 @@ import dashboardRoutes from './routes/dashboard.mjs';
 import paymentRoutes from './routes/payments.mjs';
 import adminRoutes from './routes/admin.mjs';
 import instagramRoutes from './routes/instagram.mjs';
+import emailRoutes from './routes/email.mjs';
 
 
 const app = express();
@@ -63,6 +64,7 @@ app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/v1/brand/dashboard', dashboardRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/admin/emails', emailRoutes);
 app.use('/api', instagramRoutes);
 
 

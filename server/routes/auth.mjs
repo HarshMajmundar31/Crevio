@@ -4,6 +4,7 @@ import { clerkClient } from '@clerk/express';
 import { query } from '../lib/db.mjs';
 import { signAccessToken } from '../lib/auth.mjs';
 import { requireClerkAuth } from '../middleware/require-auth.mjs';
+import { sendWelcomeEmail } from '../services/emailService.mjs';
 
 const router = Router();
 
@@ -624,6 +625,19 @@ router.post('/creator-onboard', requireClerkAuth, async (req, res) => {
     );
 
     const user = updated.rows[0];
+
+    // Autonomous welcome email to creator
+    try {
+      if (user?.email) {
+        sendWelcomeEmail({
+          userEmail: user.email,
+          userName: user.full_name || 'Creator',
+          role: 'creator'
+        }).catch(e => console.error('[Welcome Email Hook Error]', e));
+      }
+    } catch (emailErr) {
+      console.error('[Welcome Email Trigger Failed]', emailErr);
+    }
 
     return res.json({
       success: true,

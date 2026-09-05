@@ -4,6 +4,7 @@ import crypto from 'crypto';
 import { query } from '../lib/db.mjs';
 import { createId } from '../lib/ids.mjs';
 import { requireAuth, requireRole } from '../middleware/require-auth.mjs';
+import { sendEscrowFundedEmail } from '../services/emailService.mjs';
 
 const router = Router();
 
@@ -225,6 +226,32 @@ router.post('/contracts/:id/verify-payment', requireAuth, requireRole('brand', '
        VALUES ($1, $2, $3, 'contract_escrow_funded', $4::jsonb)`,
       [createId('evt'), contractId, req.user.userId, JSON.stringify({ razorpay_payment_id, razorpay_order_id, amount: escrow.amount })]
     );
+
+    // Autonomous email notification to Brand and Creator
+    try {
+      const cntRes = await query(
+        `SELECT c.creator_id, c.brand_id, bu.full_name as brand_name, bu.email as brand_email, cu.full_name as creator_name, cu.email as creator_email
+         FROM contracts c
+         LEFT JOIN users bu ON bu.id = c.brand_id
+         LEFT JOIN users cu ON cu.id = c.creator_id
+         WHERE c.id = $1`,
+        [contractId]
+      );
+      const cntRow = cntRes.rows[0];
+      if (cntRow) {
+        sendEscrowFundedEmail({
+          brandEmail: cntRow.brand_email || req.user.email,
+          brandName: cntRow.brand_name || req.user.name,
+          creatorEmail: cntRow.creator_email,
+          creatorName: cntRow.creator_name,
+          amount: escrow.amount,
+          contractId,
+          paymentId: razorpay_payment_id,
+        }).catch(e => console.error('[Escrow Funded Email Hook Error]', e));
+      }
+    } catch (emailErr) {
+      console.error('[Escrow Funded Email Trigger Failed]', emailErr);
+    }
 
     return res.json({ success: true, status: 'locked' });
   } catch (error) {

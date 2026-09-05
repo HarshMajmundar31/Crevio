@@ -1556,3 +1556,132 @@ export interface AdminUserWalletSummary {
 export async function apiAdminGetUsersWalletsSummary() {
   return request<{ success: boolean; users: AdminUserWalletSummary[] }>('/api/payments/admin/users-wallets-summary', 'GET');
 }
+
+// ==========================================
+// Resend & Autonomous Email Engine Management
+// ==========================================
+
+export interface EmailLog {
+  id: string;
+  recipient_email: string;
+  recipient_name?: string | null;
+  subject: string;
+  template_name: string;
+  status: 'sent' | 'failed' | 'simulated';
+  resend_id?: string | null;
+  error_message?: string | null;
+  metadata?: any;
+  created_at: string;
+}
+
+export interface EmailGatewayInfo {
+  isConfigured: boolean;
+  status: 'connected' | 'disconnected';
+  provider: string;
+  maskedKey: string;
+  senderEmail: string;
+  adminEmail: string;
+  environment: string;
+}
+
+export interface EmailMetrics {
+  totalAll: number;
+  totalSent: number;
+  totalFailed: number;
+  totalSimulated: number;
+  sentLast24h: number;
+  successRate: string;
+}
+
+export interface EmailOverviewResponse {
+  gateway: EmailGatewayInfo;
+  metrics: EmailMetrics;
+  templatesDistribution: { template_name: string; count: string | number }[];
+  recentLogs: EmailLog[];
+}
+
+export interface EmailLogsResponse {
+  logs: EmailLog[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
+}
+
+export interface EmailTemplateDefinition {
+  id: string;
+  name: string;
+  trigger: string;
+  description: string;
+  previewHtml: string;
+}
+
+export interface EmailTemplatesResponse {
+  templates: EmailTemplateDefinition[];
+}
+
+export interface SendTestEmailRequest {
+  to?: string;
+  templateName?: string;
+  templateData?: any;
+  customSubject?: string;
+  customMessage?: string;
+}
+
+export interface SendBroadcastEmailRequest {
+  targetAudience: 'all' | 'creators' | 'brands' | 'admin';
+  subject: string;
+  message: string;
+  actionUrl?: string;
+  actionText?: string;
+}
+
+export async function apiAdminGetEmailOverview() {
+  return request<EmailOverviewResponse>('/api/admin/emails/overview', 'GET');
+}
+
+export async function apiAdminGetEmailLogs(params?: {
+  page?: number;
+  limit?: number;
+  status?: string;
+  template?: string;
+  search?: string;
+}) {
+  const queryParams = new URLSearchParams();
+  if (params?.page !== undefined) queryParams.set('page', String(params.page));
+  if (params?.limit) queryParams.set('limit', String(params.limit));
+  if (params?.status && params.status !== 'all') queryParams.set('status', params.status);
+  if (params?.template && params.template !== 'all') queryParams.set('template', params.template);
+  if (params?.search) queryParams.set('search', params.search);
+
+  const queryStr = queryParams.toString() ? `?${queryParams.toString()}` : '';
+  return request<EmailLogsResponse>(`/api/admin/emails/logs${queryStr}`, 'GET');
+}
+
+export async function apiAdminSendTestEmail(payload: SendTestEmailRequest) {
+  return request<{
+    success: boolean;
+    status: string;
+    logId: string;
+    resendId?: string | null;
+    recipient: string;
+    error?: string | null;
+  }>('/api/admin/emails/send-test', 'POST', payload);
+}
+
+export async function apiAdminSendBroadcastEmail(payload: SendBroadcastEmailRequest) {
+  return request<{
+    success: boolean;
+    totalRecipients: number;
+    successCount: number;
+    failCount: number;
+    targetAudience: string;
+  }>('/api/admin/emails/broadcast', 'POST', payload);
+}
+
+export async function apiAdminGetEmailTemplates() {
+  return request<EmailTemplatesResponse>('/api/admin/emails/templates', 'GET');
+}
+

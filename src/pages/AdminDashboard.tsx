@@ -33,6 +33,11 @@ import {
   apiDownloadCampaignContract,
   apiDownloadSignedContract,
   apiAdminGetTreasuryOverview,
+  apiAdminGetEmailOverview,
+  apiAdminGetEmailLogs,
+  apiAdminSendTestEmail,
+  apiAdminSendBroadcastEmail,
+  apiAdminGetEmailTemplates,
   AdminOverviewStats,
   AdminActivityItem,
   AdminCampaignItem,
@@ -42,7 +47,10 @@ import {
   AdminUserItem,
   AdminProofItem,
   ApiEscrowHolding,
-  AdminTreasuryOverviewResponse
+  AdminTreasuryOverviewResponse,
+  EmailOverviewResponse,
+  EmailLog,
+  EmailTemplateDefinition
 } from '@/lib/api';
 import { 
   ShieldAlert, 
@@ -89,12 +97,18 @@ import {
   ArrowUpRight,
   ArrowDownRight,
   Sparkles,
-  Copy
+  Copy,
+  Mail,
+  SendHorizontal,
+  Radio,
+  CheckCheck,
+  Terminal,
+  SlidersHorizontal
 } from 'lucide-react';
 import { toast } from 'sonner';
 import InstagramAnalyticsDashboard from '@/components/InstagramAnalyticsDashboard';
 
-type AdminTab = 'overview' | 'payments' | 'instagram' | 'campaigns' | 'contracts' | 'applications' | 'proofs' | 'messages' | 'users' | 'escrows' | 'audits';
+type AdminTab = 'overview' | 'payments' | 'emails' | 'instagram' | 'campaigns' | 'contracts' | 'applications' | 'proofs' | 'messages' | 'users' | 'escrows' | 'audits';
 
 
 export default function AdminDashboard() {
@@ -187,11 +201,49 @@ export default function AdminDashboard() {
   const [auditLogs, setAuditLogs] = useState<any[]>([]);
   const [auditSearch, setAuditSearch] = useState('');
 
+  // Resend & Autonomous Email Engine State
+  const [emailOverview, setEmailOverview] = useState<EmailOverviewResponse | null>(null);
+  const [emailLogs, setEmailLogs] = useState<EmailLog[]>([]);
+  const [emailTemplates, setEmailTemplates] = useState<EmailTemplateDefinition[]>([]);
+  const [emailLogsFilter, setEmailLogsFilter] = useState({ status: 'all', template: 'all', search: '' });
+  const [isSendingTestEmail, setIsSendingTestEmail] = useState(false);
+  const [testEmailForm, setTestEmailForm] = useState({
+    to: 'crevio.admin@gmail.com',
+    templateName: 'welcome_user',
+    customSubject: '',
+    customMessage: '',
+    mode: 'template' as 'template' | 'custom'
+  });
+  const [selectedTemplatePreview, setSelectedTemplatePreview] = useState<EmailTemplateDefinition | null>(null);
+  const [isSendingBroadcast, setIsSendingBroadcast] = useState(false);
+  const [broadcastForm, setBroadcastForm] = useState({
+    targetAudience: 'all' as 'all' | 'creators' | 'brands' | 'admin',
+    subject: '',
+    message: '',
+    actionUrl: '',
+    actionText: ''
+  });
+  const [showBroadcastModal, setShowBroadcastModal] = useState(false);
+
   // Initial Data Load
   const fetchAllAdminData = async () => {
     try {
       setIsLoading(true);
-      const [overviewRes, campaignsRes, contractsRes, appsRes, proofsRes, msgsRes, usersRes, escrowsRes, auditRes, treasuryRes] = await Promise.all([
+      const [
+        overviewRes, 
+        campaignsRes, 
+        contractsRes, 
+        appsRes, 
+        proofsRes, 
+        msgsRes, 
+        usersRes, 
+        escrowsRes, 
+        auditRes, 
+        treasuryRes,
+        emailOverviewRes,
+        emailTemplatesRes,
+        emailLogsRes
+      ] = await Promise.all([
         apiAdminGetOverview().catch(() => null),
         apiAdminGetCampaigns().catch(() => ({ campaigns: [] })),
         apiAdminGetContracts().catch(() => ({ contracts: [] })),
@@ -201,7 +253,10 @@ export default function AdminDashboard() {
         apiAdminGetUsers().catch(() => ({ users: [] })),
         apiGetAdminEscrows().catch(() => ({ escrows: [] })),
         apiGetAuditLogs().catch(() => ({ logs: [] })),
-        apiAdminGetTreasuryOverview().catch(() => null)
+        apiAdminGetTreasuryOverview().catch(() => null),
+        apiAdminGetEmailOverview().catch(() => null),
+        apiAdminGetEmailTemplates().catch(() => ({ templates: [] })),
+        apiAdminGetEmailLogs({ limit: 50 }).catch(() => ({ logs: [] }))
       ]);
 
       if (overviewRes) {
@@ -210,6 +265,15 @@ export default function AdminDashboard() {
       }
       if (treasuryRes && treasuryRes.success) {
         setTreasuryOverview(treasuryRes);
+      }
+      if (emailOverviewRes) {
+        setEmailOverview(emailOverviewRes);
+      }
+      if (emailTemplatesRes) {
+        setEmailTemplates(emailTemplatesRes.templates);
+      }
+      if (emailLogsRes && emailLogsRes.logs) {
+        setEmailLogs(emailLogsRes.logs);
       }
       if (campaignsRes) setCampaigns(campaignsRes.campaigns);
       if (contractsRes) setContracts(contractsRes.contracts);
@@ -588,6 +652,96 @@ export default function AdminDashboard() {
     }
   };
 
+  // ==============================
+  // RESEND EMAIL HANDLERS
+  // ==============================
+  const handleSendTestEmail = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!testEmailForm.to) {
+      toast.error('Recipient email is required');
+      return;
+    }
+    try {
+      setIsSendingTestEmail(true);
+      const res = await apiAdminSendTestEmail({
+        to: testEmailForm.to,
+        templateName: testEmailForm.templateName,
+        customSubject: testEmailForm.mode === 'custom' ? testEmailForm.customSubject : undefined,
+        customMessage: testEmailForm.mode === 'custom' ? testEmailForm.customMessage : undefined,
+      });
+
+      if (res.success) {
+        toast.success(`Live Test Email dispatched successfully to ${res.recipient}! Resend ID: ${res.resendId || 'Simulated'}`);
+      } else {
+        toast.error(`Email delivery notice: ${res.error || 'Failed to dispatch'}`);
+      }
+
+      // Refresh overview and logs
+      const [over, logs] = await Promise.all([
+        apiAdminGetEmailOverview().catch(() => null),
+        apiAdminGetEmailLogs({ limit: 50 }).catch(() => ({ logs: [] }))
+      ]);
+      if (over) setEmailOverview(over);
+      if (logs && logs.logs) setEmailLogs(logs.logs);
+    } catch (err: any) {
+      toast.error(err?.message || 'Failed to send test email');
+    } finally {
+      setIsSendingTestEmail(false);
+    }
+  };
+
+  const handleSendBroadcast = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!broadcastForm.subject || !broadcastForm.message) {
+      toast.error('Subject and message are required');
+      return;
+    }
+    try {
+      setIsSendingBroadcast(true);
+      const res = await apiAdminSendBroadcastEmail(broadcastForm);
+      if (res.success) {
+        toast.success(`Broadcast sent! Delivered to ${res.successCount} of ${res.totalRecipients} recipients.`);
+        setShowBroadcastModal(false);
+        setBroadcastForm({
+          targetAudience: 'all',
+          subject: '',
+          message: '',
+          actionUrl: '',
+          actionText: ''
+        });
+        const [over, logs] = await Promise.all([
+          apiAdminGetEmailOverview().catch(() => null),
+          apiAdminGetEmailLogs({ limit: 50 }).catch(() => ({ logs: [] }))
+        ]);
+        if (over) setEmailOverview(over);
+        if (logs && logs.logs) setEmailLogs(logs.logs);
+      }
+    } catch (err: any) {
+      toast.error(err?.message || 'Failed to dispatch broadcast');
+    } finally {
+      setIsSendingBroadcast(false);
+    }
+  };
+
+  const refreshEmailLogs = async () => {
+    try {
+      const res = await apiAdminGetEmailLogs({
+        status: emailLogsFilter.status,
+        template: emailLogsFilter.template,
+        search: emailLogsFilter.search,
+        limit: 50
+      });
+      if (res && res.logs) {
+        setEmailLogs(res.logs);
+      }
+      const over = await apiAdminGetEmailOverview().catch(() => null);
+      if (over) setEmailOverview(over);
+      toast.success('Email logs synchronized');
+    } catch (err: any) {
+      toast.error('Failed to refresh email logs');
+    }
+  };
+
   // Filtered lists
   const filteredCampaigns = campaigns.filter(c => {
     const matchesQuery = !campaignSearch || 
@@ -683,6 +837,7 @@ export default function AdminDashboard() {
         {[
           { id: 'overview', label: 'Overview & Pulse', icon: Activity },
           { id: 'payments', label: '💳 Razorpay & Test Sandbox', icon: CreditCard },
+          { id: 'emails', label: `📧 Resend & Autonomous Mail (${emailOverview?.metrics.totalSent ?? 0})`, icon: Mail },
           { id: 'instagram', label: '📸 Instagram Analytics', icon: Instagram },
           { id: 'campaigns', label: `Campaigns (${campaigns.length})`, icon: Briefcase },
           { id: 'contracts', label: `Contracts (${contracts.length})`, icon: FileText },
@@ -1206,6 +1361,529 @@ export default function AdminDashboard() {
                         <tr>
                           <td colSpan={6} className="py-6 text-center text-muted-foreground">
                             No recent transactions recorded in this session.
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </motion.div>
+          )}
+
+          {/* ========================================== */}
+          {/* TAB: RESEND & AUTONOMOUS EMAIL ENGINE */}
+          {/* ========================================== */}
+          {activeTab === 'emails' && (
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
+              {/* Resend Gateway Status Banner */}
+              <div className="glass-card-elevated p-6 border-indigo-500/30 bg-gradient-to-r from-indigo-950/40 via-purple-950/20 to-card">
+                <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                  <div className="flex items-start gap-3.5">
+                    <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white shadow-glow-accent shrink-0">
+                      <Mail className="w-6 h-6" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <h2 className="text-lg font-bold text-foreground">Resend Email Gateway & Autonomous Mail Engine</h2>
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                          {emailOverview?.gateway.status === 'connected' ? 'Connected & Authenticated' : 'Simulated Gateway'}
+                        </span>
+                        <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-purple-500/10 text-purple-300 border border-purple-500/20">
+                          SDK v6.26.0
+                        </span>
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Transactional email engine powered by Resend API with modern dark-violet responsive templates and autonomous platform activity triggers.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-2 self-start lg:self-center">
+                    <button
+                      onClick={() => setShowBroadcastModal(true)}
+                      className="flex items-center gap-1.5 px-3 py-1.5 text-xs bg-purple-600 hover:bg-purple-700 text-white font-bold rounded-lg shadow-glow-accent transition-all"
+                    >
+                      <Radio className="w-3.5 h-3.5" />
+                      Platform Broadcast
+                    </button>
+                    <button
+                      onClick={refreshEmailLogs}
+                      className="flex items-center gap-1.5 px-3 py-1.5 text-xs bg-muted hover:bg-muted/80 rounded-lg font-medium border transition-all"
+                    >
+                      <RefreshCw className="w-3.5 h-3.5" />
+                      Sync Logs
+                    </button>
+                  </div>
+                </div>
+
+                {/* Gateway Credentials Quick Meta */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-5 pt-4 border-t border-border/40 text-xs">
+                  <div className="p-2.5 rounded-lg bg-background/50 border border-border/50 space-y-0.5">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Active API Key</span>
+                    <div className="flex items-center justify-between font-mono font-semibold text-foreground">
+                      <span>{emailOverview?.gateway.maskedKey || 're_RdM9••••••••tiG4'}</span>
+                      <span className="text-[10px] text-emerald-400 font-bold">LIVE</span>
+                    </div>
+                  </div>
+                  <div className="p-2.5 rounded-lg bg-background/50 border border-border/50 space-y-0.5">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Verified Sender</span>
+                    <div className="font-mono font-semibold text-accent truncate">
+                      {emailOverview?.gateway.senderEmail || 'Crevio <onboarding@resend.dev>'}
+                    </div>
+                  </div>
+                  <div className="p-2.5 rounded-lg bg-background/50 border border-border/50 space-y-0.5">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Admin Notification Inbox</span>
+                    <div className="font-mono font-semibold text-indigo-300 truncate">
+                      {emailOverview?.gateway.adminEmail || 'crevio.admin@gmail.com'}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Email Telemetry KPI Cards */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="glass-card p-4 space-y-2 border-indigo-500/20">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Total Dispatched</span>
+                    <div className="p-1.5 rounded-lg bg-indigo-500/10 text-indigo-400">
+                      <SendHorizontal className="w-4 h-4" />
+                    </div>
+                  </div>
+                  <p className="text-2xl font-bold font-mono text-foreground">
+                    {emailOverview?.metrics.totalAll ?? emailLogs.length}
+                  </p>
+                  <p className="text-[11px] text-muted-foreground">
+                    All-time transactional email dispatches
+                  </p>
+                </div>
+
+                <div className="glass-card p-4 space-y-2 border-emerald-500/20">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Delivered / Sent</span>
+                    <div className="p-1.5 rounded-lg bg-emerald-500/10 text-emerald-400">
+                      <CheckCheck className="w-4 h-4" />
+                    </div>
+                  </div>
+                  <p className="text-2xl font-bold font-mono text-emerald-400">
+                    {emailOverview?.metrics.totalSent ?? 0}
+                  </p>
+                  <p className="text-[11px] text-muted-foreground">
+                    Success Rate: <span className="font-bold text-emerald-400">{emailOverview?.metrics.successRate ?? '100%'}</span>
+                  </p>
+                </div>
+
+                <div className="glass-card p-4 space-y-2 border-purple-500/20">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Sent in Last 24h</span>
+                    <div className="p-1.5 rounded-lg bg-purple-500/10 text-purple-400">
+                      <Clock className="w-4 h-4" />
+                    </div>
+                  </div>
+                  <p className="text-2xl font-bold font-mono text-purple-300">
+                    {emailOverview?.metrics.sentLast24h ?? 0}
+                  </p>
+                  <p className="text-[11px] text-muted-foreground">
+                    Active real-time platform triggers
+                  </p>
+                </div>
+
+                <div className="glass-card p-4 space-y-2 border-amber-500/20">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Autonomous Triggers</span>
+                    <div className="p-1.5 rounded-lg bg-amber-500/10 text-amber-400">
+                      <Sparkles className="w-4 h-4" />
+                    </div>
+                  </div>
+                  <p className="text-2xl font-bold font-mono text-amber-300">
+                    8 Rules Active
+                  </p>
+                  <p className="text-[11px] text-muted-foreground">
+                    Auto-wired across lifecycle events
+                  </p>
+                </div>
+              </div>
+
+              {/* Split Workstation: Test Dispatcher (Left) & Autonomous Event Matrix (Right) */}
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                
+                {/* Left: Instant Test Email Dispatcher */}
+                <div className="lg:col-span-5 glass-card p-6 space-y-4">
+                  <div className="border-b border-border/50 pb-3 flex items-center justify-between">
+                    <div>
+                      <h3 className="font-bold text-sm flex items-center gap-2">
+                        <Terminal className="w-4 h-4 text-accent" />
+                        Live Test Email Dispatcher
+                      </h3>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        Test Resend delivery to verified recipient inbox
+                      </p>
+                    </div>
+                    <span className="px-2 py-0.5 text-[10px] rounded bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 font-bold">
+                      Interactive
+                    </span>
+                  </div>
+
+                  <form onSubmit={handleSendTestEmail} className="space-y-4 text-xs">
+                    <div>
+                      <label className="font-bold uppercase text-[10px] text-muted-foreground">Recipient Email Address</label>
+                      <input
+                        type="email"
+                        required
+                        value={testEmailForm.to}
+                        onChange={e => setTestEmailForm({ ...testEmailForm, to: e.target.value })}
+                        placeholder="crevio.admin@gmail.com"
+                        className="w-full mt-1 bg-muted/40 border border-border rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-accent font-mono"
+                      />
+                      <p className="text-[10px] text-muted-foreground mt-1">
+                        💡 Note: In Resend sandbox mode, emails deliver to <code className="text-accent font-bold">crevio.admin@gmail.com</code>.
+                      </p>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2 p-1 bg-muted/40 rounded-lg border border-border/50">
+                      <button
+                        type="button"
+                        onClick={() => setTestEmailForm({ ...testEmailForm, mode: 'template' })}
+                        className={`py-1.5 px-2 rounded-md font-bold transition-all text-center ${
+                          testEmailForm.mode === 'template' ? 'bg-card text-accent shadow-sm border border-border' : 'text-muted-foreground hover:text-foreground'
+                        }`}
+                      >
+                        Branded Template
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setTestEmailForm({ ...testEmailForm, mode: 'custom' })}
+                        className={`py-1.5 px-2 rounded-md font-bold transition-all text-center ${
+                          testEmailForm.mode === 'custom' ? 'bg-card text-accent shadow-sm border border-border' : 'text-muted-foreground hover:text-foreground'
+                        }`}
+                      >
+                        Custom Text / HTML
+                      </button>
+                    </div>
+
+                    {testEmailForm.mode === 'template' ? (
+                      <div>
+                        <label className="font-bold uppercase text-[10px] text-muted-foreground">Select Branded Template</label>
+                        <select
+                          value={testEmailForm.templateName}
+                          onChange={e => setTestEmailForm({ ...testEmailForm, templateName: e.target.value })}
+                          className="w-full mt-1 bg-muted/40 border border-border rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-accent"
+                        >
+                          <option value="welcome_user">🌟 Welcome & Onboarding Template</option>
+                          <option value="campaign_created">📢 Campaign Published Confirmation</option>
+                          <option value="application_submitted">📬 Creator Application Received</option>
+                          <option value="contract_signed">✍️ Contract E-Signed & Executed</option>
+                          <option value="escrow_funded">🔒 Escrow Vault Funded Receipt</option>
+                          <option value="proof_submitted">📸 Deliverables & Proofs Uploaded</option>
+                          <option value="escrow_released">💰 Milestone Payout Disbursed</option>
+                        </select>
+                      </div>
+                    ) : (
+                      <>
+                        <div>
+                          <label className="font-bold uppercase text-[10px] text-muted-foreground">Subject Line</label>
+                          <input
+                            type="text"
+                            required={testEmailForm.mode === 'custom'}
+                            value={testEmailForm.customSubject}
+                            onChange={e => setTestEmailForm({ ...testEmailForm, customSubject: e.target.value })}
+                            placeholder="e.g. Crevio Platform Announcement"
+                            className="w-full mt-1 bg-muted/40 border border-border rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-accent"
+                          />
+                        </div>
+                        <div>
+                          <label className="font-bold uppercase text-[10px] text-muted-foreground">Message Body (HTML supported)</label>
+                          <textarea
+                            rows={4}
+                            required={testEmailForm.mode === 'custom'}
+                            value={testEmailForm.customMessage}
+                            onChange={e => setTestEmailForm({ ...testEmailForm, customMessage: e.target.value })}
+                            placeholder="Type custom message to send..."
+                            className="w-full mt-1 bg-muted/40 border border-border rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-accent"
+                          />
+                        </div>
+                      </>
+                    )}
+
+                    <div className="pt-2 flex items-center gap-2">
+                      <button
+                        type="submit"
+                        disabled={isSendingTestEmail}
+                        className="flex-1 flex items-center justify-center gap-2 py-2 px-4 bg-accent hover:bg-accent/80 text-accent-foreground font-bold rounded-lg shadow-glow-accent transition-all disabled:opacity-50"
+                      >
+                        {isSendingTestEmail ? (
+                          <>
+                            <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                            Dispatching via Resend...
+                          </>
+                        ) : (
+                          <>
+                            <Send className="w-3.5 h-3.5" />
+                            Dispatch Test Email Now
+                          </>
+                        )}
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const tpl = emailTemplates.find(t => t.id === testEmailForm.templateName) || emailTemplates[0];
+                          if (tpl) setSelectedTemplatePreview(tpl);
+                        }}
+                        className="p-2 rounded-lg bg-muted hover:bg-muted/80 text-muted-foreground hover:text-foreground border"
+                        title="Preview Template HTML"
+                      >
+                        <Eye className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </form>
+                </div>
+
+                {/* Right: Autonomous Platform Triggers Matrix */}
+                <div className="lg:col-span-7 glass-card p-6 space-y-4">
+                  <div className="border-b border-border/50 pb-3 flex items-center justify-between">
+                    <div>
+                      <h3 className="font-bold text-sm flex items-center gap-2">
+                        <Sparkles className="w-4 h-4 text-purple-400" />
+                        Autonomous Platform Event Triggers
+                      </h3>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        Automated transactional email workflows connected across Crevio
+                      </p>
+                    </div>
+                    <span className="text-xs font-mono text-muted-foreground">
+                      {emailTemplates.length || 8} Active Automations
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[380px] overflow-y-auto pr-1">
+                    {[
+                      {
+                        id: 'welcome_user',
+                        icon: '🌟',
+                        title: 'User Onboarded',
+                        role: 'Brand & Creator',
+                        trigger: 'POST /api/auth/creator-onboard',
+                        desc: 'Dispatches modern onboarding welcome with dashboard quick links.'
+                      },
+                      {
+                        id: 'campaign_created',
+                        icon: '📢',
+                        title: 'Campaign Created',
+                        role: 'Brand',
+                        trigger: 'POST /api/campaigns',
+                        desc: 'Notifies brand of successful campaign publishing & active matchmaking.'
+                      },
+                      {
+                        id: 'application_submitted',
+                        icon: '📬',
+                        title: 'Application Received',
+                        role: 'Brand',
+                        trigger: 'POST /api/campaigns/:id/apply',
+                        desc: 'Alerts brand when creator applies with rate, pitch, and AI fit score.'
+                      },
+                      {
+                        id: 'contract_signed',
+                        icon: '✍️',
+                        title: 'Contract E-Signed',
+                        role: 'Brand & Creator',
+                        trigger: 'POST /api/contracts/:id/accept',
+                        desc: 'Confirms cryptographic signature & triggers escrow lock prompt.'
+                      },
+                      {
+                        id: 'escrow_funded',
+                        icon: '🔒',
+                        title: 'Escrow Vault Secured',
+                        role: 'Brand & Creator',
+                        trigger: 'POST /api/payments/verify-deposit',
+                        desc: 'Issues Razorpay deposit receipt and locks creator collateral.'
+                      },
+                      {
+                        id: 'proof_submitted',
+                        icon: '📸',
+                        title: 'Proof Uploaded',
+                        role: 'Brand',
+                        trigger: 'POST /api/campaigns/:id/proofs',
+                        desc: 'Alerts brand when creator submits deliverables and media analytics.'
+                      },
+                      {
+                        id: 'escrow_released',
+                        icon: '💰',
+                        title: 'Payout Disbursed',
+                        role: 'Creator',
+                        trigger: 'POST /api/contracts/:id/execute-decision',
+                        desc: 'Congratulates creator and logs automated wallet balance credit.'
+                      },
+                      {
+                        id: 'custom_broadcast',
+                        icon: '📣',
+                        title: 'Platform Broadcast',
+                        role: 'All / Segmented',
+                        trigger: 'POST /api/admin/emails/broadcast',
+                        desc: 'Admin announcements, feature releases, and policy updates.'
+                      }
+                    ].map(item => (
+                      <div key={item.id} className="p-3 rounded-xl bg-muted/30 border border-border/50 hover:border-indigo-500/40 transition-all flex flex-col justify-between space-y-2">
+                        <div>
+                          <div className="flex items-center justify-between gap-1">
+                            <span className="font-bold text-foreground text-xs flex items-center gap-1.5">
+                              <span>{item.icon}</span>
+                              {item.title}
+                            </span>
+                            <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-purple-500/10 text-purple-300">
+                              {item.role}
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-muted-foreground mt-1 leading-relaxed">
+                            {item.desc}
+                          </p>
+                        </div>
+                        <div className="pt-2 border-t border-border/40 flex items-center justify-between">
+                          <code className="text-[9px] font-mono text-muted-foreground truncate max-w-[150px]">
+                            {item.trigger}
+                          </code>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const found = emailTemplates.find(t => t.id === item.id);
+                              if (found) setSelectedTemplatePreview(found);
+                            }}
+                            className="text-[10px] font-bold text-accent hover:underline flex items-center gap-1"
+                          >
+                            <Eye className="w-3 h-3" /> Preview
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Live Resend Dispatch Logs Table */}
+              <div className="glass-card p-6 space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border/50 pb-3">
+                  <div>
+                    <h3 className="font-bold text-sm flex items-center gap-2">
+                      <Activity className="w-4 h-4 text-accent" />
+                      Live Resend Dispatch & Audit Trail
+                    </h3>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      Real-time telemetry stream of all transactional emails sent via Resend
+                    </p>
+                  </div>
+
+                  {/* Filter Controls */}
+                  <div className="flex flex-wrap items-center gap-2">
+                    <div className="relative w-48">
+                      <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                      <input
+                        type="text"
+                        placeholder="Search recipient, ID..."
+                        value={emailLogsFilter.search}
+                        onChange={e => setEmailLogsFilter({ ...emailLogsFilter, search: e.target.value })}
+                        className="w-full bg-muted/40 border border-border rounded-lg pl-8 pr-2 py-1 text-xs focus:outline-none focus:border-accent"
+                      />
+                    </div>
+
+                    <select
+                      value={emailLogsFilter.status}
+                      onChange={e => setEmailLogsFilter({ ...emailLogsFilter, status: e.target.value })}
+                      className="bg-muted/40 border border-border rounded-lg px-2.5 py-1 text-xs focus:outline-none focus:border-accent"
+                    >
+                      <option value="all">All Statuses</option>
+                      <option value="sent">Sent (Delivered)</option>
+                      <option value="failed">Failed (Error)</option>
+                      <option value="simulated">Simulated</option>
+                    </select>
+
+                    <button
+                      onClick={refreshEmailLogs}
+                      className="p-1.5 bg-muted hover:bg-muted/80 rounded-lg text-muted-foreground hover:text-foreground border"
+                      title="Reload Logs"
+                    >
+                      <RefreshCw className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Logs Table */}
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs">
+                    <thead>
+                      <tr className="border-b border-border/60 text-muted-foreground uppercase text-[10px] tracking-wider">
+                        <th className="py-2.5 px-3">Status</th>
+                        <th className="py-2.5 px-3">Event / Template</th>
+                        <th className="py-2.5 px-3">Recipient</th>
+                        <th className="py-2.5 px-3">Subject</th>
+                        <th className="py-2.5 px-3">Resend ID</th>
+                        <th className="py-2.5 px-3">Timestamp</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border/30">
+                      {emailLogs
+                        .filter(l => {
+                          const matchesQuery = !emailLogsFilter.search ||
+                            l.recipient_email.toLowerCase().includes(emailLogsFilter.search.toLowerCase()) ||
+                            (l.subject && l.subject.toLowerCase().includes(emailLogsFilter.search.toLowerCase())) ||
+                            (l.resend_id && l.resend_id.toLowerCase().includes(emailLogsFilter.search.toLowerCase()));
+                          const matchesStatus = emailLogsFilter.status === 'all' || l.status === emailLogsFilter.status;
+                          return matchesQuery && matchesStatus;
+                        })
+                        .map(log => {
+                          return (
+                            <tr key={log.id} className="hover:bg-muted/20 transition-colors">
+                              <td className="py-2.5 px-3 whitespace-nowrap">
+                                <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold uppercase ${
+                                  log.status === 'sent'
+                                    ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                                    : log.status === 'simulated'
+                                    ? 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20'
+                                    : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
+                                }`}>
+                                  {log.status === 'sent' && <Check className="w-2.5 h-2.5" />}
+                                  {log.status === 'failed' && <X className="w-2.5 h-2.5" />}
+                                  {log.status}
+                                </span>
+                              </td>
+                              <td className="py-2.5 px-3 font-semibold text-foreground whitespace-nowrap">
+                                <span className="inline-block px-1.5 py-0.5 rounded bg-muted text-[10px] font-mono">
+                                  {log.template_name}
+                                </span>
+                              </td>
+                              <td className="py-2.5 px-3 whitespace-nowrap">
+                                <div className="font-medium text-foreground">{log.recipient_email}</div>
+                                {log.recipient_name && (
+                                  <div className="text-[10px] text-muted-foreground">{log.recipient_name}</div>
+                                )}
+                              </td>
+                              <td className="py-2.5 px-3 max-w-[240px] truncate text-muted-foreground">
+                                {log.subject}
+                              </td>
+                              <td className="py-2.5 px-3 font-mono text-[10px] whitespace-nowrap">
+                                {log.resend_id ? (
+                                  <span className="text-accent font-bold bg-accent/10 px-1.5 py-0.5 rounded border border-accent/20">
+                                    {log.resend_id.substring(0, 16)}...
+                                  </span>
+                                ) : (
+                                  <span className="text-muted-foreground">N/A</span>
+                                )}
+                              </td>
+                              <td className="py-2.5 px-3 text-muted-foreground whitespace-nowrap">
+                                {new Date(log.created_at).toLocaleString('en-IN', {
+                                  month: 'short',
+                                  day: 'numeric',
+                                  hour: '2-digit',
+                                  minute: '2-digit'
+                                })}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      {emailLogs.length === 0 && (
+                        <tr>
+                          <td colSpan={6} className="py-8 text-center text-muted-foreground">
+                            No transactional emails logged yet. Click "Dispatch Test Email Now" to test the Resend gateway.
                           </td>
                         </tr>
                       )}
@@ -2819,6 +3497,194 @@ export default function AdminDashboard() {
           </div>
         </div>
       )}
+
+      {/* ========================================== */}
+      {/* MODAL: EMAIL TEMPLATE HTML PREVIEW */}
+      {/* ========================================== */}
+      {selectedTemplatePreview && (
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200"
+          onClick={() => setSelectedTemplatePreview(null)}
+        >
+          <div 
+            className="relative max-w-3xl w-full max-h-[92vh] flex flex-col bg-card border border-border/80 rounded-2xl shadow-2xl overflow-hidden p-4 sm:p-6"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between pb-3 border-b border-border/60 mb-4">
+              <div>
+                <div className="flex items-center gap-2">
+                  <Mail className="w-5 h-5 text-accent" />
+                  <h3 className="font-bold text-base text-foreground">
+                    {selectedTemplatePreview.name}
+                  </h3>
+                  <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-purple-500/10 text-purple-300">
+                    {selectedTemplatePreview.id}
+                  </span>
+                </div>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {selectedTemplatePreview.description} · Trigger: <code className="text-accent">{selectedTemplatePreview.trigger}</code>
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedTemplatePreview(null)}
+                className="p-2 rounded-lg bg-muted hover:bg-muted/80 text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Iframe Preview Container */}
+            <div className="w-full flex-1 min-h-[480px] rounded-xl overflow-hidden border border-border/60 bg-[#07050d]">
+              <iframe
+                title="Email Preview"
+                srcDoc={selectedTemplatePreview.previewHtml}
+                className="w-full h-full min-h-[480px] border-none"
+                sandbox="allow-same-origin"
+              />
+            </div>
+
+            <div className="flex items-center justify-between pt-4 border-t border-border/60 mt-4 text-xs">
+              <span className="text-muted-foreground text-[11px]">
+                Powered by Resend Transactional Email Engine
+              </span>
+              <button
+                onClick={() => {
+                  setTestEmailForm(prev => ({
+                    ...prev,
+                    templateName: selectedTemplatePreview.id,
+                    mode: 'template'
+                  }));
+                  setSelectedTemplatePreview(null);
+                  toast.info(`Selected "${selectedTemplatePreview.name}" for live test dispatch.`);
+                }}
+                className="px-3 py-1.5 bg-accent hover:bg-accent/80 text-accent-foreground font-bold rounded-lg shadow-glow-accent flex items-center gap-1.5"
+              >
+                <Send className="w-3.5 h-3.5" />
+                Use in Test Dispatcher
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================== */}
+      {/* MODAL: PLATFORM-WIDE BROADCAST ANNOUNCEMENT */}
+      {/* ========================================== */}
+      <AnimatePresence>
+        {showBroadcastModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm">
+            <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="glass-card-elevated p-6 w-full max-w-lg space-y-4">
+              <div className="flex items-center justify-between border-b border-border pb-3">
+                <div className="flex items-center gap-2">
+                  <Radio className="w-5 h-5 text-purple-400" />
+                  <div>
+                    <h3 className="font-bold text-base text-foreground">
+                      Platform Email Broadcast
+                    </h3>
+                    <p className="text-[11px] text-muted-foreground">
+                      Dispatch targeted announcements to active platform users via Resend
+                    </p>
+                  </div>
+                </div>
+                <button onClick={() => setShowBroadcastModal(false)} className="p-1 text-muted-foreground hover:text-foreground">
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              <form onSubmit={handleSendBroadcast} className="space-y-3.5 text-xs">
+                <div>
+                  <label className="font-bold uppercase text-[10px] text-muted-foreground">Target Audience</label>
+                  <select
+                    value={broadcastForm.targetAudience}
+                    onChange={e => setBroadcastForm({ ...broadcastForm, targetAudience: e.target.value as any })}
+                    className="w-full mt-1 bg-muted/40 border border-border rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-accent font-semibold"
+                  >
+                    <option value="all">👥 All Registered Users (Creators + Brands + Admins)</option>
+                    <option value="creators">🎨 Verified Creators Only</option>
+                    <option value="brands">💼 Enterprise Brands Only</option>
+                    <option value="admin">🛡️ Platform Super-Admins</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="font-bold uppercase text-[10px] text-muted-foreground">Broadcast Subject</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. Crevio 2.0: Instant Escrow Payouts & Instagram Media Sync"
+                    value={broadcastForm.subject}
+                    onChange={e => setBroadcastForm({ ...broadcastForm, subject: e.target.value })}
+                    className="w-full mt-1 bg-muted/40 border border-border rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-accent"
+                  />
+                </div>
+
+                <div>
+                  <label className="font-bold uppercase text-[10px] text-muted-foreground">Announcement Message (HTML / Markdown supported)</label>
+                  <textarea
+                    rows={4}
+                    required
+                    placeholder="Write announcement body..."
+                    value={broadcastForm.message}
+                    onChange={e => setBroadcastForm({ ...broadcastForm, message: e.target.value })}
+                    className="w-full mt-1 bg-muted/40 border border-border rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-accent"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="font-bold uppercase text-[10px] text-muted-foreground">Call To Action URL (Optional)</label>
+                    <input
+                      type="url"
+                      placeholder="https://crevio.io/campaigns"
+                      value={broadcastForm.actionUrl}
+                      onChange={e => setBroadcastForm({ ...broadcastForm, actionUrl: e.target.value })}
+                      className="w-full mt-1 bg-muted/40 border border-border rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-accent"
+                    />
+                  </div>
+                  <div>
+                    <label className="font-bold uppercase text-[10px] text-muted-foreground">CTA Button Label</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Explore Opportunities"
+                      value={broadcastForm.actionText}
+                      onChange={e => setBroadcastForm({ ...broadcastForm, actionText: e.target.value })}
+                      className="w-full mt-1 bg-muted/40 border border-border rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-accent"
+                    />
+                  </div>
+                </div>
+
+                <div className="border-t border-border pt-4 flex items-center justify-end gap-2">
+                  <button 
+                    type="button" 
+                    onClick={() => setShowBroadcastModal(false)} 
+                    className="px-4 py-2 bg-muted hover:bg-muted/80 rounded-lg font-medium"
+                  >
+                    Cancel
+                  </button>
+                  <button 
+                    type="submit" 
+                    disabled={isSendingBroadcast}
+                    className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white font-bold rounded-lg shadow-glow-accent flex items-center gap-2 disabled:opacity-50"
+                  >
+                    {isSendingBroadcast ? (
+                      <>
+                        <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                        Dispatched Broadcast...
+                      </>
+                    ) : (
+                      <>
+                        <SendHorizontal className="w-3.5 h-3.5" />
+                        Send Broadcast Now
+                      </>
+                    )}
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
     </DashboardLayout>
   );

@@ -13,6 +13,10 @@ import {
   parseContractWithAI,
   readUploadedDocument,
 } from '../lib/contract-ingestion.mjs';
+import { 
+  sendContractSignedEmail, 
+  sendEscrowReleasedEmail 
+} from '../services/emailService.mjs';
 
 const router = Router();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
@@ -936,6 +940,26 @@ router.post('/:id/accept', requireAuth, requireRole('creator'), async (req, res)
   const applicationId = applicationResult.rows[0]?.id;
   await logApplicationEvent(applicationId, req.user.userId, 'creator_esigned_contract', { contractId });
 
+  // Autonomous email notification to brand
+  try {
+    if (contractInfo?.brand_id) {
+      const brandUser = await query('SELECT full_name, email FROM users WHERE id = $1', [contractInfo.brand_id]);
+      const bEmail = brandUser.rows[0]?.email;
+      const bName = brandUser.rows[0]?.full_name;
+      if (bEmail) {
+        sendContractSignedEmail({
+          recipientEmail: bEmail,
+          recipientName: bName,
+          otherPartyName: req.user.name || 'Verified Creator',
+          contractId,
+          role: 'brand'
+        }).catch(e => console.error('[Contract Signed Email Hook Error]', e));
+      }
+    }
+  } catch (emailErr) {
+    console.error('[Contract Signed Email Trigger Failed]', emailErr);
+  }
+
   return res.json({ contractId, status: 'accepted' });
 });
 
@@ -1204,6 +1228,23 @@ router.post('/:id/execute', requireAuth, requireRole('brand', 'admin'), async (r
            VALUES ($1, $2, $3, 'escrow_credit', 'completed', $4, $5)`,
           [createId('txn'), creatorWallet.id, escrow.amount, `Escrow Released: Contract ${contractId} Deliverables Verified Successfully`, escrow.id]
         );
+
+        // Autonomous email notification to creator on payout release
+        try {
+          const creatorUser = await query('SELECT full_name, email FROM users WHERE id = $1', [contract.creator_id]);
+          const cEmail = creatorUser.rows[0]?.email;
+          const cName = creatorUser.rows[0]?.full_name;
+          if (cEmail) {
+            sendEscrowReleasedEmail({
+              creatorEmail: cEmail,
+              creatorName: cName,
+              amount: escrow.amount,
+              contractId
+            }).catch(e => console.error('[Escrow Released Email Hook Error]', e));
+          }
+        } catch (emailErr) {
+          console.error('[Escrow Released Email Trigger Failed]', emailErr);
+        }
       }
     } else if (finalStatus === 'disputed') {
       // If AI fails, move the escrow holding to disputed status
