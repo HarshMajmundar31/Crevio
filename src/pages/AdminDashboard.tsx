@@ -224,6 +224,7 @@ export default function AdminDashboard() {
     actionText: ''
   });
   const [showBroadcastModal, setShowBroadcastModal] = useState(false);
+  const [selectedLogDetail, setSelectedLogDetail] = useState<EmailLog | null>(null);
 
   // Initial Data Load
   const fetchAllAdminData = async () => {
@@ -1832,7 +1833,11 @@ export default function AdminDashboard() {
                         })
                         .map(log => {
                           return (
-                            <tr key={log.id} className="hover:bg-muted/20 transition-colors">
+                            <tr 
+                              key={log.id} 
+                              onClick={() => setSelectedLogDetail(log)}
+                              className="hover:bg-muted/30 cursor-pointer transition-colors group"
+                            >
                               <td className="py-2.5 px-3 whitespace-nowrap">
                                 <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold uppercase ${
                                   log.status === 'sent'
@@ -1869,13 +1874,16 @@ export default function AdminDashboard() {
                                   <span className="text-muted-foreground">N/A</span>
                                 )}
                               </td>
-                              <td className="py-2.5 px-3 text-muted-foreground whitespace-nowrap">
-                                {new Date(log.created_at).toLocaleString('en-IN', {
-                                  month: 'short',
-                                  day: 'numeric',
-                                  hour: '2-digit',
-                                  minute: '2-digit'
-                                })}
+                              <td className="py-2.5 px-3 text-muted-foreground whitespace-nowrap flex items-center justify-between gap-2">
+                                <span>
+                                  {new Date(log.created_at).toLocaleString('en-IN', {
+                                    month: 'short',
+                                    day: 'numeric',
+                                    hour: '2-digit',
+                                    minute: '2-digit'
+                                  })}
+                                </span>
+                                <Eye className="w-3.5 h-3.5 opacity-0 group-hover:opacity-100 text-accent transition-opacity" />
                               </td>
                             </tr>
                           );
@@ -3681,6 +3689,118 @@ export default function AdminDashboard() {
                   </button>
                 </div>
               </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* ========================================== */}
+      {/* MODAL: EMAIL LOG INSPECTION & TELEMETRY */}
+      {/* ========================================== */}
+      <AnimatePresence>
+        {selectedLogDetail && (
+          <div 
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200"
+            onClick={() => setSelectedLogDetail(null)}
+          >
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95 }} 
+              animate={{ opacity: 1, scale: 1 }} 
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="relative max-w-xl w-full bg-card border border-border/80 rounded-2xl shadow-2xl overflow-hidden p-6 space-y-4"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between pb-3 border-b border-border/60">
+                <div className="flex items-center gap-2">
+                  <Mail className="w-5 h-5 text-accent" />
+                  <div>
+                    <h3 className="font-bold text-base text-foreground">
+                      Email Dispatch Telemetry Log
+                    </h3>
+                    <span className="font-mono text-[10px] text-muted-foreground">ID: {selectedLogDetail.id}</span>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => setSelectedLogDetail(null)}
+                  className="p-1 text-muted-foreground hover:text-foreground"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              <div className="space-y-3 text-xs">
+                <div className="grid grid-cols-2 gap-3 p-3 rounded-xl bg-muted/30 border border-border/50">
+                  <div>
+                    <span className="text-[10px] font-bold uppercase text-muted-foreground">Status</span>
+                    <div className="mt-0.5">
+                      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${
+                        selectedLogDetail.status === 'sent'
+                          ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                          : selectedLogDetail.status === 'simulated'
+                          ? 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20'
+                          : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
+                      }`}>
+                        {selectedLogDetail.status}
+                      </span>
+                    </div>
+                  </div>
+                  <div>
+                    <span className="text-[10px] font-bold uppercase text-muted-foreground">Template</span>
+                    <p className="font-mono font-semibold text-foreground mt-0.5">{selectedLogDetail.template_name}</p>
+                  </div>
+                  <div>
+                    <span className="text-[10px] font-bold uppercase text-muted-foreground">Recipient</span>
+                    <p className="font-semibold text-foreground mt-0.5">{selectedLogDetail.recipient_email}</p>
+                    {selectedLogDetail.recipient_name && <p className="text-[10px] text-muted-foreground">{selectedLogDetail.recipient_name}</p>}
+                  </div>
+                  <div>
+                    <span className="text-[10px] font-bold uppercase text-muted-foreground">Resend ID</span>
+                    <p className="font-mono text-[11px] text-accent mt-0.5 break-all">{selectedLogDetail.resend_id || 'N/A'}</p>
+                  </div>
+                </div>
+
+                <div>
+                  <span className="text-[10px] font-bold uppercase text-muted-foreground">Subject</span>
+                  <p className="p-2.5 rounded-lg bg-muted/40 border border-border/50 font-medium text-foreground mt-1">
+                    {selectedLogDetail.subject}
+                  </p>
+                </div>
+
+                {selectedLogDetail.error_message && (
+                  <div>
+                    <span className="text-[10px] font-bold uppercase text-rose-400">Resend Error Detail</span>
+                    <div className="p-2.5 rounded-lg bg-rose-500/10 border border-rose-500/30 text-rose-300 font-mono text-[11px] mt-1 space-y-1">
+                      <p>{selectedLogDetail.error_message}</p>
+                      {selectedLogDetail.error_message.includes('own email address') && (
+                        <p className="text-[10px] text-amber-300 font-sans pt-1 border-t border-rose-500/20">
+                          💡 <strong>Resend Sandbox Restriction:</strong> To send emails to domains other than <code className="font-mono font-bold">crevio.admin@gmail.com</code>, add and verify your custom domain in Resend Dashboard.
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {selectedLogDetail.metadata && Object.keys(selectedLogDetail.metadata).length > 0 && (
+                  <div>
+                    <span className="text-[10px] font-bold uppercase text-muted-foreground">Event Metadata</span>
+                    <pre className="p-2.5 rounded-lg bg-black/40 border border-border/50 font-mono text-[10px] text-muted-foreground mt-1 overflow-x-auto max-h-32">
+                      {JSON.stringify(selectedLogDetail.metadata, null, 2)}
+                    </pre>
+                  </div>
+                )}
+              </div>
+
+              <div className="border-t border-border pt-4 flex items-center justify-between text-xs">
+                <span className="text-muted-foreground text-[10px]">
+                  {new Date(selectedLogDetail.created_at).toLocaleString('en-IN')}
+                </span>
+                <button
+                  onClick={() => setSelectedLogDetail(null)}
+                  className="px-4 py-1.5 bg-muted hover:bg-muted/80 text-foreground font-semibold rounded-lg"
+                >
+                  Close
+                </button>
+              </div>
             </motion.div>
           </div>
         )}

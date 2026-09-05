@@ -5,6 +5,9 @@ import { broadcastEvent } from '../lib/socket.mjs';
 
 let resendClient = null;
 
+const DEFAULT_FROM_EMAIL = 'Crevio <onboarding@resend.dev>';
+const DEFAULT_ADMIN_EMAIL = 'crevio.admin@gmail.com';
+
 export function getResendClient() {
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) {
@@ -18,11 +21,11 @@ export function getResendClient() {
 }
 
 export function getSenderEmail() {
-  return process.env.RESEND_FROM_EMAIL || 'Crevio <onboarding@resend.dev>';
+  return process.env.RESEND_FROM_EMAIL || DEFAULT_FROM_EMAIL;
 }
 
 export function getAdminEmail() {
-  return process.env.ADMIN_NOTIFICATION_EMAIL || process.env.CLERK_ADMIN_EMAILS || 'crevio.admin@gmail.com';
+  return process.env.ADMIN_NOTIFICATION_EMAIL || process.env.CLERK_ADMIN_EMAILS || DEFAULT_ADMIN_EMAIL;
 }
 
 // Ensure database table for logging emails
